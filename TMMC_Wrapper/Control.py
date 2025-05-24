@@ -293,19 +293,17 @@ class ControlFlow():
                 self.control.rotate(self.degree, self.direction)
 
                 # Get tag data from the camera so far
-                tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2)
+                tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
                 for tag in tags:
                     if tag[0] == self.desired_tag:
-                        #If the tag is found then no need to search
+                        #If the tag is found then no need to search more
+                        
                         self.mode = ROBOTMODE.DRIVETOTAG
                         self.destination_tag = self.desired_tag
-                
-                # if dont see: turn in one of the directions until it sees the desired tag
-                # if self.turnLeft:
-
-                
+                        self.pose = tag  
             else:
                 print("NO DESIRED TAG SET")
+
 
     def reverse(self, timeout=1):
         self.mode = ROBOTMODE.REVERSING

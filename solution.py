@@ -1,4 +1,5 @@
 from TMMC_Wrapper import *
+from TMMC_Wrapper.Control import ROBOTMODE
 import rclpy
 import numpy as np
 import math
@@ -6,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 1
+challengeLevel = 4
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -25,7 +26,7 @@ imu = IMU(robot)
 logging = Logging(robot)
 lidar = Lidar(robot)
 
-if challengeLevel <= 3:
+if challengeLevel <= 4:
     control.start_keyboard_control()
     rclpy.spin_once(robot, timeout_sec=0.1)
 
@@ -141,18 +142,25 @@ try:
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
-            # state = Control.ControlFlow(control, camera)
             # Write your solution here for challenge level 3 (or 3.5)
-            # controller.mode = controller.
-            # control.make_move(0.1)
-            pose = camera.estimate_apriltag_pose(camera.rosImg_to_cv2())
-            print(pose)
+
+            
 
     if challengeLevel == 4:
+        controller.mode = ROBOTMODE.SEARCHFORTAG
+        controller.degree = 10
+        controller.direction = -1
+        controller.desired_tag = 5
+        
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
             # Write your solution here for challenge level 4
+
+            controller.make_move(0.1)
+
+            pose = camera.estimate_apriltag_pose(camera.rosImg_to_cv2())
+            print(pose)
 
     if challengeLevel == 5:
         while rclpy.ok():
