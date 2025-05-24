@@ -6,7 +6,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 1
+challengeLevel = 0
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -32,6 +32,7 @@ if challengeLevel <= 2:
 
 try:
     if challengeLevel == 0:
+        robot.CONST_speed_control = 0.5
         control.start_keyboard_input()
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
@@ -39,17 +40,33 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
+        def detect_wall(scan_distance, distance_threshold):
+            scan = lidar.checkScan()
+            dist_tuple = lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 20)
+            #dist = dist_tuple[0] * math.cos(math.radians(dist_tuple[1]))
+            #print(f"shortest: {dist_tuple}, dist: {dist}")
+            dist = dist_tuple[0]
+            if ( 0.0 <= dist <= distance_threshold):
+                #print(dist)
+                #d = vt
+                #t = d/v
+                time_moveback = (distance_threshold - dist)/0.2 + 0.15
+                print(f"MOVEBACK {time_moveback} SECONDS")
+                control.stop_keyboard_input()
+                #controller.reverse(0.1)
+                control.send_cmd_vel(0.0,0.0)
+                control.set_cmd_vel(-0.2,0.0,time_moveback)
+                control.start_keyboard_input()
+            #controller.make_move(atomic_time)
+        scan_distance = 0.5
+        distance_threshold = 0.15
         atomic_time = 0.1
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
-            scan = lidar.checkScan()
-            dist = lidar.detect_obstacle_in_cone(scan, 0.50, 0, 20)
-            # print(dist)
-            if ( 0.0 <= dist[0] <= 0.2):
-                #print("STOP")
-                controller.reverse(0.1)
-            controller.make_move(atomic_time)
+            detect_wall(scan_distance, distance_threshold)
+            #controller.reverse(0.1)
+            #controller.make_move(atomic_time)
 
     if challengeLevel == 2:
         while rclpy.ok():
