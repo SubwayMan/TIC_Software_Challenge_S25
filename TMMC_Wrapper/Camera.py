@@ -102,7 +102,7 @@ class Camera:
         y2 = -1
 
         # Predict stop signs in image using model
-        results = self.model.predict(img, classes=[11], conf=0.25, imgsz=640, max_det=1)
+        results = self.model.predict(img, classes=[11], conf=0.25, imgsz=640, max_det=1, verbose=False)
         
         # Results is a list containing the results object with all data
         results_obj = results[0]
@@ -118,6 +118,6 @@ class Camera:
         except:
             stop_sign_detected = False
 
-        cv2.imshow("Bounding Box", img)
+        # cv2.imshow("Bounding Box", img)
 
         return stop_sign_detected, x1, y1, x2, y2   
