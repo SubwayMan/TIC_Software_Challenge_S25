@@ -41,6 +41,7 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
+        controller = ControlFlow(control)
         def find_angle_and_distance(pose):
             _, range, bearing, elevation = pose
             distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
@@ -120,6 +121,7 @@ try:
     if challengeLevel == 2:
         atomic_time = 0.1
         should_stop = False
+        controller = ControlFlow(control)
 
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
@@ -137,16 +139,25 @@ try:
                 time.sleep(1.0)
                 print("RESUME")
                 control.start_keyboard_input()
-
-            
             
     if challengeLevel == 3:
+        # create path
+        # find 7->3->5->6
+        edges = [
+            (7, 3, 1.5, (45, -1)),
+            (3, 5, 0.2, (135, -1)),
+            (5, 6, 0.1, (90, -1)),
+            (6, 7, 0.1, (90, -1))
+        ]
+        path = RobotPath()
+        for edge in edges:
+            path.add_edge(*edge)
+
+        controller = ControlFlow(control, camera)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
             # Write your solution here for challenge level 3 (or 3.5)
-
-            
 
     if challengeLevel == 4:
         controller.mode = ROBOTMODE.SEARCHFORTAG

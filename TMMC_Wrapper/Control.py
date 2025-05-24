@@ -122,7 +122,7 @@ class Control:
         self.robot.input = False
 
     def start_keyboard_input(self):
-        ''' Enables keyboard input processing by setting the robot\'s input flag to true. '''
+        ''' Enables keyboardinput processing by setting the robot\'s input flag to true. '''
         self.robot.input = True
 
     def start_keyboard_control(self):
@@ -238,17 +238,26 @@ class ROBOTMODE:
     STOPPED=2
     DRIVETOTAG=3
     SEARCHFORTAG=4
+    INIT=5 # check what tag is at the beginning
 
-ROBOTMODE = Enum('ROBOTMODE', [('KEYBOARD', 0), ('REVERSING', 1), ('STOPPED', 2), ('DRIVETOTAG', 3), ('SEARCHFORTAG', 4)])
+ROBOTMODE = Enum('ROBOTMODE', 
+                 [('KEYBOARD', 0), 
+                  ('REVERSING', 1), 
+                  ('STOPPED', 2), 
+                  ('DRIVETOTAG', 3), 
+                  ('SEARCHFORTAG', 4),
+                  ('INIT', 5)
+                  ])
 
 class ControlFlow():
-    def __init__(self, control: Control, camera: Camera):
+    def __init__(self, control: Control, camera: Camera, mode=ROBOTMODE.KEYBOARD):
         self.control = control
-        self.mode = ROBOTMODE.KEYBOARD
-        self.default_mode = ROBOTMODE.KEYBOARD
+        self.mode = mode
+        self.default_mode = self.mode
         self.timeout = 1
         self.destination_tag = 1
         self.pose = None
+        self.last_mode = None
 
         # variables for SEARCHFORTAG
         self.desired_tag = None
@@ -259,6 +268,14 @@ class ControlFlow():
     def make_move(self, atomic_time):
         if self.mode == ROBOTMODE.KEYBOARD:
             self.control.start_keyboard_input()
+            if self.detect_stop_sign():
+                self.stop(0.3)
+        
+        elif self.mode == ROBOTMODE.STOPPED:
+            self.control.stop_keyboard_input()
+            if self.timeout <= 0:
+                self.mode = self.last_mode or self.default_mode
+            self.timeout -= atomic_time
 
         elif self.mode == ROBOTMODE.REVERSING:
             self.control.stop_keyboard_input()
@@ -270,8 +287,11 @@ class ControlFlow():
         elif self.mode == ROBOTMODE.STOPPED:
             self.control.stop_keyboard_input()
             self.timeout -= atomic_time
+            self.control.set_cmd_vel(0.0, 0.0, atomic_time)
+
             if self.timeout <= 0:
                 self.mode = self.default_mode
+
         elif self.mode == ROBOTMODE.DRIVETOTAG:
             self.control.stop_keyboard_input()
             angle, distance = self._find_angle_and_distance(self.pose)
@@ -303,10 +323,21 @@ class ControlFlow():
                         self.pose = tag  
             else:
                 print("NO DESIRED TAG SET")
+        elif self.mode == ROBOTMODE.INIT:
+            self.control.stop_keyboard_input()
+            tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
+            if tags:
+                pass
+                
 
 
     def reverse(self, timeout=1):
         self.mode = ROBOTMODE.REVERSING
+        self.timeout = timeout
+    
+    def stop(self, timeout=0.3):
+        self.last_mode = self.mode # store mode to begin after resuming
+        self.mode = ROBOTMODE.STOPPED
         self.timeout = timeout
 
     def drive_to_tag(self, tag, initial_pose):
@@ -318,3 +349,10 @@ class ControlFlow():
         _, range, bearing, elevation = pose
         distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
         return bearing, distance
+
+    def detect_stop_sign(self):
+        status, x1, y1, x2, y2 = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
+        return status and (y2-y1)/(x2-x1) <= 1.2
+
+
+
