@@ -40,6 +40,36 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
+        def find_angle_and_distance(pose):
+            _, range, bearing, elevation = pose
+            distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
+            return bearing, distance
+        def april_tag_movement_new(stopping_distance=0.5,rotation=30):
+            image = camera.rosImg_to_cv2()
+            poses = camera.estimate_apriltag_pose(image)
+            for pose in poses:
+                print(type(pose[0]))
+                if pose == 2:
+                    print("yay")
+                    controller.drive_to_tag(2, pose)
+                    #angle, distance = find_angle_and_distance(pose)
+                    #turn certain angle
+                    #move distance and ensure apriltag still in sight
+                    #rotate for next apriltag
+                    print(f"angle {angle}, distance {distance}")
+                #print(f"pose is {pose}")
+        def april_tag_movement(stopping_distance=0.5,rotation=30):
+            image = camera.rosImg_to_cv2()
+            poses = camera.estimate_apriltag_pose(image)
+            for pose in poses:
+                if pose[0] == 2:
+                    print("yay")
+                    angle, distance = find_angle_and_distance(pose)
+                    #turn certain angle
+                    #move distance and ensure apriltag still in sight
+                    #rotate for next apriltag
+                    print(f"angle {angle}, distance {distance}")
+                print(f"pose is {pose}")
         def prevent_flip():
             quaternion = imu.checkImu()
             angles = imu.euler_from_quaternion(quaternion.orientation)
@@ -51,6 +81,8 @@ try:
                 control.send_cmd_vel(0.0,0.0)
                 time.sleep(1.0)
                 control.start_keyboard_input()
+                return False
+            return True
         def detect_wall(scan_distance, distance_threshold):
             scan = lidar.checkScan()
             dist_tuple = lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 20)
@@ -75,8 +107,9 @@ try:
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
-            detect_wall(scan_distance, distance_threshold)
-            prevent_flip()
+            if prevent_flip():
+                detect_wall(scan_distance, distance_threshold)
+            april_tag_movement_new()
             #controller.reverse(0.1)
             #controller.make_move(atomic_time)
 

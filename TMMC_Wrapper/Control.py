@@ -1,6 +1,7 @@
 from .IMU import IMU
 from irobot_create_msgs.action import Dock,Undock
 from geometry_msgs.msg import Twist
+import numpy as np
 import time
 import rclpy
 import math
@@ -234,8 +235,10 @@ class ROBOTMODE:
     KEYBOARD=0
     REVERSING=1
     STOPPED=2
+    DRIVETOTAG=3
+    SEARCHFORTAG=4
 
-ROBOTMODE = Enum('ROBOTMODE', [('KEYBOARD', 0), ('REVERSING', 1), ('STOPPED', 2)])
+ROBOTMODE = Enum('ROBOTMODE', [('KEYBOARD', 0), ('REVERSING', 1), ('STOPPED', 2), ('DRIVETOTAG', 3), ('SEARCHFORTAG', 4)])
 
 class ControlFlow():
     def __init__(self, control: Control):
@@ -243,6 +246,8 @@ class ControlFlow():
         self.mode = ROBOTMODE.KEYBOARD
         self.default_mode = ROBOTMODE.KEYBOARD
         self.timeout = 1
+        self.destination_tag = 1
+        self.pose = None
 
     def make_move(self, atomic_time):
         if self.mode == ROBOTMODE.KEYBOARD:
@@ -260,9 +265,28 @@ class ControlFlow():
             self.timeout -= atomic_time
             if self.timeout <= 0:
                 self.mode = self.default_mode
+        elif self.mode == ROBOTMODE.DRIVETOTAG:
+            self.control.stop_keyboard_input()
+            angle, distance = self._find_angle_and_distance(self.pose)
+            angle_rotate = abs(float(angle))
+            direction = -1 if angle < 0 else 1
+            self.control.rotate(angle_rotate, direction)
+            #may need to add driving correction since velocity * time may not be real distance
+            velocity = 1.0
+            time_forward = distance/velocity
+            self.control.set_cmd_vel(velocity, 0.0, time_forward)
+            self.mode = self.default_mode
 
     def reverse(self, timeout=1):
         self.mode = ROBOTMODE.REVERSING
         self.timeout = timeout
-            
 
+    def drive_to_tag(self, tag, initial_pose):
+        #FOR FUTURE, NEED EGDE?
+        self.destination_tag = tag
+        self.pose = initial_pose
+
+    def _find_angle_and_distance(self, pose):
+        _, range, bearing, elevation = pose
+        distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
+        return bearing, distance
