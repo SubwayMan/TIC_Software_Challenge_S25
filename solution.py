@@ -6,7 +6,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 2
+challengeLevel = 1
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -40,6 +40,17 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
+        def prevent_flip():
+            quaternion = imu.checkImu()
+            angles = imu.euler_from_quaternion(quaternion.orientation)
+            pitch = angles[1] 
+            #print(f"pitch: {pitch}")
+            if pitch < -0.01 or 0.01 < pitch:
+                print("STOP")
+                control.stop_keyboard_input()
+                control.send_cmd_vel(0.0,0.0)
+                time.sleep(1.0)
+                control.start_keyboard_input()
         def detect_wall(scan_distance, distance_threshold):
             scan = lidar.checkScan()
             dist_tuple = lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 20)
@@ -55,7 +66,7 @@ try:
                 control.stop_keyboard_input()
                 #controller.reverse(0.1)
                 control.send_cmd_vel(0.0,0.0)
-                control.set_cmd_vel(-0.2,0.0,time_moveback)
+                control.set_cmd_vel(-0.4,0.0,time_moveback)
                 control.start_keyboard_input()
             #controller.make_move(atomic_time)
         scan_distance = 0.5
@@ -65,6 +76,7 @@ try:
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
             detect_wall(scan_distance, distance_threshold)
+            prevent_flip()
             #controller.reverse(0.1)
             #controller.make_move(atomic_time)
 
