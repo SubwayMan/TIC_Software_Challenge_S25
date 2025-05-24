@@ -44,31 +44,20 @@ try:
             _, range, bearing, elevation = pose
             distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
             return bearing, distance
-        def april_tag_movement_new(stopping_distance=0.5,rotation=30):
+        def april_tag_movement_new(stopping_distance=0.5,rotation=30,atomic_time=0.1):
             image = camera.rosImg_to_cv2()
             poses = camera.estimate_apriltag_pose(image)
             for pose in poses:
                 print(type(pose[0]))
-                if pose == 2:
+                if pose[0] == 2:
                     print("yay")
                     controller.drive_to_tag(2, pose)
+                    controller.make_move(atomic_time)
                     #angle, distance = find_angle_and_distance(pose)
                     #turn certain angle
                     #move distance and ensure apriltag still in sight
                     #rotate for next apriltag
-                    print(f"angle {angle}, distance {distance}")
-                #print(f"pose is {pose}")
-        def april_tag_movement(stopping_distance=0.5,rotation=30):
-            image = camera.rosImg_to_cv2()
-            poses = camera.estimate_apriltag_pose(image)
-            for pose in poses:
-                if pose[0] == 2:
-                    print("yay")
-                    angle, distance = find_angle_and_distance(pose)
-                    #turn certain angle
-                    #move distance and ensure apriltag still in sight
-                    #rotate for next apriltag
-                    print(f"angle {angle}, distance {distance}")
+                    #print(f"angle {angle}, distance {distance}")
                 print(f"pose is {pose}")
         def prevent_flip():
             quaternion = imu.checkImu()
@@ -86,31 +75,44 @@ try:
         def detect_wall(scan_distance, distance_threshold):
             scan = lidar.checkScan()
             dist_tuple = lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 20)
-            #dist = dist_tuple[0] * math.cos(math.radians(dist_tuple[1]))
+            dist = dist_tuple[0] * math.cos(math.radians(np.deg2rad(dist_tuple[1])))
             #print(f"shortest: {dist_tuple}, dist: {dist}")
-            dist = dist_tuple[0]
+            #dist = dist_tuple[0]
+            print(dist)
             if ( 0.0 <= dist <= distance_threshold):
-                #print(dist)
                 #d = vt
                 #t = d/v
-                time_moveback = (distance_threshold - dist)/0.2 + 0.15
-                print(f"MOVEBACK {time_moveback} SECONDS")
-                control.stop_keyboard_input()
-                #controller.reverse(0.1)
+                #time_moveback = (distance_threshold - dist)/0.2 + 0.15
+                #time_moveback = 0.1
+                #print(f"MOVEBACK {time_moveback} SECONDS")
+                #control.stop_keyboard_input()
                 control.send_cmd_vel(0.0,0.0)
-                control.set_cmd_vel(-0.4,0.0,time_moveback)
-                time.sleep(time_moveback)
-                control.start_keyboard_input()
-            #controller.make_move(atomic_time)
-        scan_distance = 0.5
+                controller.reverse(0.2)
+                #control.send_cmd_vel(0.0,0.0)
+                #control.set_cmd_vel(-0.4,0.0,time_moveback)
+                #time.sleep(time_moveback)
+                #control.start_keyboard_input()
+            controller.make_move(atomic_time)
+        print("CHALLENGE 1")
+        scan_distance = 0.9
         distance_threshold = 0.40
         atomic_time = 0.1
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
-            # if prevent_flip():
+            #image = camera.rosImg_to_cv2()
+            ##print(image)
+            #poses = camera.estimate_apriltag_pose(image)
+            #print(poses)
+            #for pose in poses:
+            #    #print(type(pose[0]))
+            #    if pose[0] == 2:
+            #        print("yay")
+            #        controller.drive_to_tag(2, pose)
+            #        controller.make_move(atomic_time)
+            #print("ya")
+            #if prevent_flip():
             detect_wall(scan_distance, distance_threshold)
-            # april_tag_movement_new()
             #controller.reverse(0.1)
             #controller.make_move(atomic_time)
 
