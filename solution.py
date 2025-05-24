@@ -6,11 +6,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-<<<<<<< Updated upstream
 challengeLevel = 1
-=======
-challengeLevel = 2
->>>>>>> Stashed changes
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
