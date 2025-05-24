@@ -99,17 +99,18 @@ try:
                 #controller.reverse(0.1)
                 control.send_cmd_vel(0.0,0.0)
                 control.set_cmd_vel(-0.4,0.0,time_moveback)
+                time.sleep(time_moveback)
                 control.start_keyboard_input()
             #controller.make_move(atomic_time)
         scan_distance = 0.5
-        distance_threshold = 0.15
+        distance_threshold = 0.40
         atomic_time = 0.1
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
-            if prevent_flip():
-                detect_wall(scan_distance, distance_threshold)
-            april_tag_movement_new()
+            # if prevent_flip():
+            detect_wall(scan_distance, distance_threshold)
+            # april_tag_movement_new()
             #controller.reverse(0.1)
             #controller.make_move(atomic_time)
 
@@ -142,7 +143,7 @@ try:
             time.sleep(0.1)
             # state = Control.ControlFlow(control, camera)
             # Write your solution here for challenge level 3 (or 3.5)
-            # control.ROBOT
+            # controller.mode = controller.
             # control.make_move(0.1)
             pose = camera.estimate_apriltag_pose(camera.rosImg_to_cv2())
             print(pose)
