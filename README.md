@@ -6,6 +6,10 @@ The documentation for the start code can be found here:
 
 https://uofwaterloo.sharepoint.com/:w:/s/tm-eng-engineeringideasclinic/EViGUSkADoRAo0SAcYJBfS0B4q_ESYHth7W70o-UvChApw?e=BzTRPD
 
+Google Drive can be found here:
+
+https://drive.google.com/drive/folders/1U0qSvJUjqUBoHz40CjrrwecNmML-Dhgb?usp=sharing
+
 ## Getting Set Up
 Controlling the TurtleBots requires ROS2, which only works on Linux devices. To get around this on Windows or Mac systems you can install a Virtual Machine to emulate a Linux system. If you are already running Linux or have a VM installed, skip to the **Environment Setup** section.
 
