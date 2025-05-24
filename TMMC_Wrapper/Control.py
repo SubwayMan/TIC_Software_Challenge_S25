@@ -1,3 +1,4 @@
+from TMMC_Wrapper import Camera
 from .IMU import IMU
 from irobot_create_msgs.action import Dock,Undock
 from geometry_msgs.msg import Twist
@@ -241,13 +242,19 @@ class ROBOTMODE:
 ROBOTMODE = Enum('ROBOTMODE', [('KEYBOARD', 0), ('REVERSING', 1), ('STOPPED', 2), ('DRIVETOTAG', 3), ('SEARCHFORTAG', 4)])
 
 class ControlFlow():
-    def __init__(self, control: Control):
+    def __init__(self, control: Control, camera: Camera):
         self.control = control
         self.mode = ROBOTMODE.KEYBOARD
         self.default_mode = ROBOTMODE.KEYBOARD
         self.timeout = 1
         self.destination_tag = 1
         self.pose = None
+
+        # variables for SEARCHFORTAG
+        self.desired_tag = None
+        self.camera = camera
+        self.degree = 0
+        self.direction = 1
 
     def make_move(self, atomic_time):
         if self.mode == ROBOTMODE.KEYBOARD:
@@ -276,6 +283,29 @@ class ControlFlow():
             time_forward = distance/velocity
             self.control.set_cmd_vel(velocity, 0.0, time_forward)
             self.mode = self.default_mode
+        elif self.mode == ROBOTMODE.SEARCHFORTAG:
+            # Requirement: The desired tag must be set, the angle to turn and multiplier +- 1
+
+            # Safety Check
+            if (self.desired_tag != None):
+
+                # Rotate the robot in the specified direction
+                self.control.rotate(self.degree, self.direction)
+
+                # Get tag data from the camera so far
+                tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2)
+                for tag in tags:
+                    if tag[0] == self.desired_tag:
+                        #If the tag is found then no need to search
+                        self.mode = ROBOTMODE.DRIVETOTAG
+                        self.destination_tag = self.desired_tag
+                
+                # if dont see: turn in one of the directions until it sees the desired tag
+                # if self.turnLeft:
+
+                
+            else:
+                print("NO DESIRED TAG SET")
 
     def reverse(self, timeout=1):
         self.mode = ROBOTMODE.REVERSING

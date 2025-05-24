@@ -19,13 +19,13 @@ if not "robot" in globals():
     robot = Robot(IS_SIM=is_SIM, DEBUG=Debug)
     
 control = Control(robot)
-controller = ControlFlow(control)
 camera = Camera(robot)
+controller = ControlFlow(control, camera)
 imu = IMU(robot)
 logging = Logging(robot)
 lidar = Lidar(robot)
 
-if challengeLevel <= 2:
+if challengeLevel <= 3:
     control.start_keyboard_control()
     rclpy.spin_once(robot, timeout_sec=0.1)
 
@@ -140,7 +140,12 @@ try:
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
+            # state = Control.ControlFlow(control, camera)
             # Write your solution here for challenge level 3 (or 3.5)
+            # control.ROBOT
+            # control.make_move(0.1)
+            pose = camera.estimate_apriltag_pose(camera.rosImg_to_cv2())
+            print(pose)
 
     if challengeLevel == 4:
         while rclpy.ok():
