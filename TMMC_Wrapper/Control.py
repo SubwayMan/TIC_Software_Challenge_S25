@@ -8,6 +8,8 @@ import threading
 from pynput.keyboard import Listener
 from .Robot import Robot
 
+from enum import Enum
+
 class Control:
     def __init__(self, robot : Robot):
         ''' Initializes the control object by storing the robot reference. '''
@@ -227,3 +229,40 @@ class Control:
     def turn_right(self):
         ''' Sends a command to turn the robot right at an angular velocity scaled by the robot\'s constant speed control factor. '''
         self.send_cmd_vel(0.0, -self.robot.CONST_speed_control)
+
+class ROBOTMODE:
+    KEYBOARD=0
+    REVERSING=1
+    STOPPED=2
+
+ROBOTMODE = Enum('ROBOTMODE', [('KEYBOARD', 0), ('REVERSING', 1), ('STOPPED', 2)])
+
+class ControlFlow():
+    def __init__(self, control: Control):
+        self.control = control
+        self.mode = ROBOTMODE.KEYBOARD
+        self.default_mode = ROBOTMODE.KEYBOARD
+        self.timeout = 1
+
+    def make_move(self, atomic_time):
+        if self.mode == ROBOTMODE.KEYBOARD:
+            self.control.start_keyboard_input()
+
+        elif self.mode == ROBOTMODE.REVERSING:
+            self.control.stop_keyboard_input()
+            self.control.move_backward()
+            self.timeout -= atomic_time
+            if self.timeout <= 0:
+                self.mode = self.default_mode
+
+        elif self.mode == ROBOTMODE.STOPPED:
+            self.control.stop_keyboard_input()
+            self.timeout -= atomic_time
+            if self.timeout <= 0:
+                self.mode = self.default_mode
+
+    def reverse(self, timeout=1):
+        self.mode = ROBOTMODE.REVERSING
+        self.timeout = timeout
+            
+
