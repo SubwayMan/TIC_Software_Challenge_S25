@@ -6,7 +6,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 1
+challengeLevel = 2
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -57,7 +57,10 @@ try:
 
     if challengeLevel == 2:
         while rclpy.ok():
-            camera.checkImageRelease()
+            # image = camera.checkImage()
+            detection = camera.ML_predict_stop_sign(camera.rosImg_to_cv2())
+            # camera.checkImageRelease()
+            time.sleep(1)
             
     if challengeLevel == 3:
         while rclpy.ok():
