@@ -274,6 +274,7 @@ class ControlFlow():
         self.current_rotation = None # needs to be a tuple (starting_quaternion, target_degrees, direction)
 
     def make_move(self, atomic_time):
+        print("IM LOOOOOPINGINGINGIN")
         self.handle_movement()
         if self.mode == ROBOTMODE.KEYBOARD:
             self.control.start_keyboard_input()
@@ -341,18 +342,21 @@ class ControlFlow():
     def handle_movement(self):
         rot = 0
         vel = self.vel
-
+        print(self.rotation_queue)
         if self.current_rotation:
             start_orientation, target, direction = self.current_rotation
-            if self.imu.has_rotation_occurred_degrees(start_orientation, self.imu.checkImu(), target, direction):
+            if self.imu.has_rotation_occurred_degrees(start_orientation, self.imu.checkImu().orientation, target, direction):
                 if self.rotation_queue:
                     self.current_rotation = self.rotation_queue.pop()
-                    rot = direction * self.ang_vel
                 else:
                     self.current_rotation = None
-                    rot = 0
+            else:
+                rot = direction * self.ang_vel
+            print("I'm rotating", self.current_rotation, rot)
+        elif self.rotation_queue:
+            self.current_rotation = self.rotation_queue.pop()
 
-        self.control.send_cmd_vel(rot, vel)
+        self.control.send_cmd_vel(float(rot), float(vel))
 
 
     def reverse(self, timeout=1):
@@ -379,7 +383,7 @@ class ControlFlow():
         return status and (y2-y1)/(x2-x1) <= 1.2
     
     def rotate(self, degrees, direction):
-        self.rotation_queue.append((self.imu.checkImu(), degrees, direction))
+        self.rotation_queue.append((self.imu.checkImu().orientation, degrees, direction))
         
 
 

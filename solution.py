@@ -182,12 +182,14 @@ try:
             # Write your solution here for challenge level 5
 
     if challengeLevel == 6:
+        print("TEST 6 OMG")
         controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
         controller.rotate(90, 1)
         controller.rotate(90, -1)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
+            controller.make_move(0.1)
 
             
 
