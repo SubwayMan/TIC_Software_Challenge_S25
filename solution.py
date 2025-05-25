@@ -7,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 0
+challengeLevel = 4
 
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
@@ -22,12 +22,11 @@ if not "robot" in globals():
     
 control = Control(robot)
 camera = Camera(robot)
-# controller = ControlFlow(control, camera)
 imu = IMU(robot)
 logging = Logging(robot)
 lidar = Lidar(robot)
 
-if challengeLevel <= 4:
+if challengeLevel <= 2:
     control.start_keyboard_control()
     rclpy.spin_once(robot, timeout_sec=0.1)
 
@@ -161,10 +160,10 @@ try:
             # Write your solution here for challenge level 3 (or 3.5)
 
     if challengeLevel == 4:
-        controller.mode = ROBOTMODE.SEARCHFORTAG
-        controller.degree = 10
-        controller.direction = -1
-        controller.desired_tag = 5
+        controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
+
+        controller.search_for_tag(3, -1, 360)
+
         
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
@@ -172,9 +171,6 @@ try:
             # Write your solution here for challenge level 4
 
             controller.make_move(0.1)
-
-            pose = camera.estimate_apriltag_pose(camera.rosImg_to_cv2())
-            print(pose)
 
     if challengeLevel == 5:
         while rclpy.ok():

@@ -267,14 +267,13 @@ class ControlFlow():
         self.camera = camera
         self.degree = 0
         self.direction = 1
-        self.ang_vel = 0.5
+        self.ang_vel = 0.9
 
         # for movement (rotation)
         self.rotation_queue = deque()
         self.current_rotation = None # needs to be a tuple (target_degrees, direction)
 
     def make_move(self, atomic_time):
-        print("IM LOOOOOPINGINGINGIN")
         self.handle_movement()
         if self.mode == ROBOTMODE.KEYBOARD:
             self.control.start_keyboard_input()
@@ -317,51 +316,19 @@ class ControlFlow():
             # Requirement: The desired tag must be set, the angle to turn and multiplier +- 1
 
             # Safety Check
-            if (self.desired_tag != None):
+            # print("Desired tag: ", self.desired_tag)
+            
+            # Get tag data from the camera so far
+            tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
+            for tag in tags:
+                if tag[0] == self.desired_tag and -10 <= tag[2] <= 10:
+                    #If the tag is found then no need to search more
+                    self.destination_tag = self.desired_tag
+                    self.pose = tag
+                    self.current_rotation = None
 
-                # Rotate the robot in the specified direction
-                self.control.rotate(self.degree, self.direction)
+                    self.mode = ROBOTMODE.INIT
 
-                # Get tag data from the camera so far
-                tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
-                for tag in tags:
-                    if tag[0] == self.desired_tag:
-                        #If the tag is found then no need to search more
-                        print(tag)
-                        #  Realign to make the robot facing straight to the tag
-
-                        offset = tag[2]
-                        deltaTime = math.sin(np.deg2rad(abs(offset))) * tag[1] / 0.2
-                        
-                        print("Offset: ", offset)
-                        print("Distance: ", tag[1])
-                        print("Time: ", deltaTime)
-                        print("Velocity: ", 0.2)
-                        print("Angle: ", math.sin(np.deg2rad(abs(offset))))
-
-
-                        # On the right side of the tag
-                        if (offset < 0):
-                            # 90 + offset would be less than 90
-                            self.control.rotate(90 + offset, 1)
-                            time.sleep(1)
-                            self.control.set_cmd_vel(0.2, 0.0, deltaTime)
-                            time.sleep(1)
-                            self.control.rotate(90, -1)
-                        else:
-                            # On the left side of the tag
-                            # 90 - offset would be less than 90
-                            self.control.rotate(90 - offset, -1)
-                            time.sleep(1)
-                            self.control.set_cmd_vel(self.control.robot.CONST_speed_control, 0.0, deltaTime)
-                            time.sleep(1)
-                            self.control.rotate(90, 1)
-                        time.sleep(100)
-                        # self.mode = ROBOTMODE.DRIVETOTAG
-                        self.destination_tag = self.desired_tag
-                        self.pose = tag  
-            else:
-                print("NO DESIRED TAG SET")
         elif self.mode == ROBOTMODE.INIT:
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
@@ -376,7 +343,7 @@ class ControlFlow():
 
         rot = 0
         vel = self.vel
-        print(self.rotation_queue)
+
         if self.current_rotation:
             start_orientation, target, direction = self.current_rotation
             _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
@@ -392,11 +359,9 @@ class ControlFlow():
                 rot = direction * self.ang_vel
                 vel = 0
 
-            print("I'm rotating", self.current_rotation, rot)
-
         elif self.rotation_queue:
             start = self.imu.checkImu().orientation
-            self.current_rotation = (start, *self.rotation_queue.pop())
+            self.current_rotation = (start, *self.rotation_queue.popleft())
 
         self.control.send_cmd_vel(float(vel), float(rot))
 
@@ -415,6 +380,11 @@ class ControlFlow():
         self.destination_tag = tag
         self.pose = initial_pose
 
+    def search_for_tag(self, tag, direction, angle=90):
+        self.rotate(angle, direction)
+        self.desired_tag = tag
+        self.mode = ROBOTMODE.SEARCHFORTAG
+
     def _find_angle_and_distance(self, pose):
         _, range, bearing, elevation = pose
         distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
@@ -425,7 +395,7 @@ class ControlFlow():
         return status and (y2-y1)/(x2-x1) <= 1.2
     
     def rotate(self, degrees, direction):
-        self.rotation_queue.append((degrees, direction))
+        self.rotation_queue.append((degrees, -direction))
         
 
 
