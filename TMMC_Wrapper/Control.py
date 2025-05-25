@@ -250,7 +250,8 @@ class ROBOTMODE:
     DRIVETOTAG=3
     SEARCHFORTAG=4
     INIT=5 # check what tag is at the beginning
-    FORWARD=6
+    STOPSIGN=6
+    FORWARD=7
 
 ROBOTMODE = Enum('ROBOTMODE', 
                  [('KEYBOARD', 0), 
@@ -259,7 +260,8 @@ ROBOTMODE = Enum('ROBOTMODE',
                   ('DRIVETOTAG', 3), 
                   ('SEARCHFORTAG', 4),
                   ('INIT', 5),
-                  ('STOPSIGN', 6)
+                  ('STOPSIGN', 6),
+                  ('FORWARD', 7)
                   ])
 
 class ControlFlow():
@@ -297,6 +299,7 @@ class ControlFlow():
         self.stop_sign_seen = False
 
     def make_move(self, atomic_time):
+        print(self.mode)
         self.handle_movement()
         if self.mode == ROBOTMODE.KEYBOARD:
             print("in keyboard mode")
@@ -415,19 +418,25 @@ class ControlFlow():
                 
 
         elif self.mode == ROBOTMODE.STOPSIGN:
+            print("IM LOOKING FOR SIGNS")
             detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
-            self.vel = 0.5
+            if(self.stop_sign_seen == False):
+                self.vel = 0.5
             if detection[0] == True and (detection[4] - detection[2]) / (detection[3] - detection[1]) <= 1.2:
+                # print("Stop sign seen!!!")
+                print(detection)
                 self.stop_sign_seen = True
                 # Conditions for stopping is fulfilled, now we slow down
-                self.vel = (detection[4] - detection[2]) / 300
+                self.vel = 0.15
+                print(self.vel)
             
             if(self.stop_sign_seen and detection[0] == False):
                 # Stop sign is not seen anymore
+                print("Stop sign not seen anymore")
                 self.stop_sign_seen = False
                 self.vel = 0.0
                 self.mode = ROBOTMODE.INIT
-                self.drive_to_tag(self.desired_tag)
+                # self.drive_to_tag(self.desired_tag)
 
         elif self.mode == ROBOTMODE.INIT:
             self.vel = 0
@@ -454,22 +463,24 @@ class ControlFlow():
 
         rot = 0
         vel = self.vel
-        dist = self.near_wall(scan_distance = 0.8, distance_threshold = 0.4)
-        print(self.mode)
-        if 0<= dist <= 0.4:
-            print("TOO CLOSE")
-            if self.mode != ROBOTMODE.REVERSING:
-                self.previous_mode = self.mode
-                vel = 0.0
-            self.mode = ROBOTMODE.REVERSING
-            print(self.mode)
-            self.timeout = 0.2
-        elif 0 <= dist <= 1.0 and self.mode != ROBOTMODE.REVERSING: 
-            #print(f"SLOW DOWN, current vel is {vel}")
-            vel = vel * (1 - math.exp(-10.0 * (dist - 0.1)))
-            #print(f"new velocity of {vel}")
-        if self.mode == ROBOTMODE.KEYBOARD:
-            return
+        # print("BR1")
+        # dist = self.near_wall(scan_distance = 0.8, distance_threshold = 0.4)
+
+        # print(self.mode)
+        # if 0<= dist <= 0.4:
+        #     print("TOO CLOSE")
+        #     if self.mode != ROBOTMODE.REVERSING:
+        #         self.previous_mode = self.mode
+        #         vel = 0.0
+        #     self.mode = ROBOTMODE.REVERSING
+        #     print(self.mode)
+        #     self.timeout = 0.2
+        # elif 0 <= dist <= 1.0 and self.mode != ROBOTMODE.REVERSING: 
+        #     #print(f"SLOW DOWN, current vel is {vel}")
+        #     vel = vel * (1 - math.exp(-10.0 * (dist - 0.1)))
+        #     #print(f"new velocity of {vel}")
+        # if self.mode == ROBOTMODE.KEYBOARD:
+        #     return
         if self.current_rotation:
             start_orientation, target, direction, angvel = self.current_rotation
             _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
@@ -487,11 +498,13 @@ class ControlFlow():
         elif self.rotation_queue:
             start = self.imu.checkImu().orientation
             self.current_rotation = (start, *self.rotation_queue.popleft())
-        print("Movement", vel, rot)
+        # print("Movement", vel, rot)
         self.control.send_cmd_vel(float(vel), float(rot))
 
     def near_wall(self, scan_distance = 0.8, distance_threshold = 0.4):
+        print("BR2")
         scan = self.lidar.checkScan()
+        print("BR3")
         dist_tuple = self.lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 10)
         dist = dist_tuple[0] * math.cos(math.radians(np.deg2rad(dist_tuple[1])))
         print(dist)
