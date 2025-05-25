@@ -331,6 +331,22 @@ class ControlFlow():
 
         elif self.mode == ROBOTMODE.DRIVETOTAG:
             print("MODE DRIVE TO TAG", self.destination_tag)
+            # stop sign
+            detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
+
+            if detection[0] == True and (detection[4] - detection[2]) / (detection[3] - detection[1]) <= 1.2:
+                print("Stop sign seen!!!")
+                print(detection)
+                self.stop_sign_seen = True
+                # Conditions for stopping is fulfilled, now we slow down
+                self.vel = (max(0, 80 - (detection[3] - detection[1]))) / 160
+                return
+            
+            elif(self.stop_sign_seen and detection[0] == False):
+                # Stop sign is not seen anymore
+                print("Stop sign not seen anymore")
+                self.setstop(0.3)
+
             self.vel = 0.5
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
@@ -351,7 +367,7 @@ class ControlFlow():
                     self.rotate(10, direction, 0.3)
                     break
             else:
-                d = self.vel * (time.time() - self.ltime)
+                d = self.vel * (time.time() - self.ltime) * 0.02
                 print("Assuming distance", d)
                 self.dist -= max(d, 0.1)
                 #self.clear_rotations()
@@ -430,9 +446,8 @@ class ControlFlow():
             if(self.stop_sign_seen and detection[0] == False):
                 # Stop sign is not seen anymore
                 print("Stop sign not seen anymore")
-                self.stop_sign_seen = False
-                self.vel = 0.0
-                self.mode = ROBOTMODE.INIT
+                self.setstop(0.3)
+
                 # self.drive_to_tag(self.desired_tag)
 
         elif self.mode == ROBOTMODE.INIT:
@@ -513,13 +528,14 @@ class ControlFlow():
         self.mode = ROBOTMODE.REVERSING
         self.timeout = timeout
     
-    def stop(self, timeout=0.3):
+    def setstop(self, timeout=0.3):
         self.last_mode = self.mode # store mode to begin after resuming
         self.mode = ROBOTMODE.STOPPED
         self.timeout = timeout
 
     def drive_to_tag(self, tag):
         #FOR FUTURE, NEED EGDE?
+        self.stop_sign_seen = False
         self.destination_tag = tag
         self.ltime = time.time()
         self.dist = 10000
@@ -547,9 +563,9 @@ class ControlFlow():
     
     def rotate(self, degrees, direction, angvel=1):
         if self.current_rotation:
-            self.rotation_queue.append((degrees, -direction, angvel))
+            self.rotation_queue.append((degrees, direction, angvel))
         else:
-            self.current_rotation = (self.imu.checkImu().orientation, degrees, -direction, angvel)
+            self.current_rotation = (self.imu.checkImu().orientation, degrees, direction, angvel)
 
     def clear_rotations(self):
         self.current_rotation = None
