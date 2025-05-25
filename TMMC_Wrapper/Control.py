@@ -328,7 +328,7 @@ class ControlFlow():
             self.control.set_cmd_vel(0.0, 0.0, atomic_time)
 
             if self.timeout <= 0:
-                self.mode = self.default_mode
+                self.mode = self.last_mode or self.default_mode
 
         elif self.mode == ROBOTMODE.DRIVETOTAG:
             print("MODE DRIVE TO TAG", self.destination_tag)
@@ -341,18 +341,19 @@ class ControlFlow():
                 self.stop_sign_seen = True
                 # Conditions for stopping is fulfilled, now we slow down
                 self.vel = (max(0, 80 - (detection[3] - detection[1]))) / 160
-                return
             
             elif(self.stop_sign_seen and detection[0] == False):
                 # Stop sign is not seen anymore
                 print("Stop sign not seen anymore")
                 self.stop_sign_seen = False
-                self.setstop(0.3)
+                self.setstop(1)
+                return
 
             self.vel = 0.5
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
             for tag in tags:
+                print("TAG SEEN", tag)
                 if tag[0] == self.destination_tag:
                     self.pose = tag
                     angle, distance = self._find_angle_and_distance(self.pose)
