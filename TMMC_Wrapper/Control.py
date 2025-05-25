@@ -274,7 +274,8 @@ class ControlFlow():
         self.degree = 0
         self.direction = 1
         self.ang_vel = 0.9
-        self.dist = None
+        self.dist = 10000
+        self.ltime = time.time()
 
         # for movement (rotation)
         self.rotation_queue = deque()
@@ -314,17 +315,28 @@ class ControlFlow():
             print("MODE DRIVE TO TAG")
             self.vel = 0.5
             self.control.stop_keyboard_input()
-            angle, distance = self._find_angle_and_distance(self.pose)
-            angle_rotate = abs(float(angle))
-            direction = -1 if angle > 0 else 1
-            print(f"ROTATING {angle_rotate} {direction}")
 
-            if distance <= 10:
+            tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
+            for tag in tags:
+                if tag[0] == self.destination_tag:
+                    self.pose = tag
+                    angle, distance = self._find_angle_and_distance(self.pose)
+                    print("Saw tag at angle ", angle, "distance", distance)
+                    angle_rotate = abs(float(angle))
+                    direction = -1 if angle > 0 else 1
+                    print(f"ROTATING {angle_rotate} {direction}")
+                    self.dist = distance
+
+                    if angle_rotate > 3:
+                        self.clear_rotations()
+                        self.rotate(0.5, direction)
+                    break
+            else:
+                self.dist -= 0.2
+
+            if self.dist <= 10:
                 self.mode = ROBOTMODE.INIT
 
-            if angle_rotate > 3:
-                self.clear_rotations()
-                self.rotate(0.5, direction)
             #may need to add driving correction since velocity * time may not be real distance
             #velocity = 1.0
             #time_forward = distance/velocity
@@ -396,10 +408,9 @@ class ControlFlow():
         self.mode = ROBOTMODE.STOPPED
         self.timeout = timeout
 
-    def drive_to_tag(self, tag, initial_pose):
+    def drive_to_tag(self, tag):
         #FOR FUTURE, NEED EGDE?
         self.destination_tag = tag
-        self.pose = initial_pose
         self.mode = ROBOTMODE.DRIVETOTAG
 
     def stop(self, timeout=1.0):

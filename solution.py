@@ -83,7 +83,7 @@ try:
                 #print(type(pose[0]))
                 if pose[0] == 2:
                     print("yay")
-                    controller.drive_to_tag(2, pose)
+                    controller.drive_to_tag(2)
                     controller.make_move(atomic_time)
             #print("ya")
             #if prevent_flip():
@@ -154,8 +154,7 @@ try:
     if challengeLevel == 6:
         print("TEST 6 OMG")
         controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
-        controller.rotate(90, 1)
-        controller.rotate(90, -1)
+        controller.drive_to_tag(6)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
