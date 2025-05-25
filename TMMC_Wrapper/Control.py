@@ -322,6 +322,7 @@ class ControlFlow():
                 self.mode = self.previous_mode
 
         elif self.mode == ROBOTMODE.STOPPED:
+            print("IM STOPPED")
             self.control.stop_keyboard_input()
             self.timeout -= atomic_time
             self.control.set_cmd_vel(0.0, 0.0, atomic_time)
@@ -345,6 +346,7 @@ class ControlFlow():
             elif(self.stop_sign_seen and detection[0] == False):
                 # Stop sign is not seen anymore
                 print("Stop sign not seen anymore")
+                self.stop_sign_seen = False
                 self.setstop(0.3)
 
             self.vel = 0.5
@@ -436,7 +438,7 @@ class ControlFlow():
             if(self.stop_sign_seen == False):
                 self.vel = 0.5
             if detection[0] == True and (detection[4] - detection[2]) / (detection[3] - detection[1]) <= 1.2:
-                # print("Stop sign seen!!!")
+                print("Stop sign seen!!!")
                 print(detection)
                 self.stop_sign_seen = True
                 # Conditions for stopping is fulfilled, now we slow down
@@ -446,7 +448,7 @@ class ControlFlow():
             if(self.stop_sign_seen and detection[0] == False):
                 # Stop sign is not seen anymore
                 print("Stop sign not seen anymore")
-                self.setstop(0.3)
+                self.setstop(1)
 
                 # self.drive_to_tag(self.desired_tag)
 
