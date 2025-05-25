@@ -19,6 +19,11 @@ class Control:
         self.robot = robot
         self.imu = IMU(self.robot)
 
+    def set_faster_cmd_vel(self):
+        self.velocity_x = velocity_x
+        self.velocity_phi = velocity_phi
+        self.end_time = time.time() + duration
+
     def set_cmd_vel(self, velocity_x : float, velocity_phi : float, duration : float):
         """ Sets up and initiates a timer-based process to continuously publish velocity commands for the specified duration. """
         self.velocity_x = velocity_x
@@ -103,13 +108,14 @@ class Control:
             yaw_current_deg = math.degrees(yaw_current)
             current_diff = minimal_angle_diff(yaw_start_deg, yaw_current_deg)
             
-            self.send_cmd_vel(0.0, direction * 0.75)
+            self.send_cmd_vel(0.0, direction * 0.20)
             rclpy.spin_once(self.robot, timeout_sec=0.1)
         
         self.send_cmd_vel(0.0, 0.0)
         if self.robot.DEBUG:
             print("turn complete")
 
+        print("turn complete")
         
     def send_cmd_vel(self, linear_x : float, angular_z : float):
         ''' Publishes a twist message to robot\'s command velocity topic using the provided linear and angular velocity values. '''
@@ -289,9 +295,11 @@ class ControlFlow():
         elif self.mode == ROBOTMODE.REVERSING:
             self.control.stop_keyboard_input()
             self.control.move_backward()
-            self.timeout -= atomic_time
-            if self.timeout <= 0:
-                self.mode = self.default_mode
+            #self.timeout -= atomic_time
+            #while self.timeout <= 0:
+            #    self.timeout -= atomic_time
+            time.sleep(self.timeout)
+            self.mode = self.default_mode
 
         elif self.mode == ROBOTMODE.STOPPED:
             self.control.stop_keyboard_input()
@@ -302,15 +310,20 @@ class ControlFlow():
                 self.mode = self.default_mode
 
         elif self.mode == ROBOTMODE.DRIVETOTAG:
+            print("MODE DRIVE TO TAG")
             self.control.stop_keyboard_input()
             angle, distance = self._find_angle_and_distance(self.pose)
             angle_rotate = abs(float(angle))
-            direction = -1 if angle < 0 else 1
+            direction = -1 if angle > 0 else 1
+            print(f"ROTATING {angle_rotate} {direction}")
             self.control.rotate(angle_rotate, direction)
             #may need to add driving correction since velocity * time may not be real distance
-            velocity = 1.0
-            time_forward = distance/velocity
-            self.control.set_cmd_vel(velocity, 0.0, time_forward)
+            #velocity = 1.0
+            #time_forward = distance/velocity
+            #print(f"MOVING MOVING sleeping for {time_forward}")
+            #self.control.set_cmd_vel(velocity, 0.0, time_forward)
+            #time.sleep(time_forward)
+            print("ya")
             self.mode = self.default_mode
         elif self.mode == ROBOTMODE.SEARCHFORTAG:
             # Requirement: The desired tag must be set, the angle to turn and multiplier +- 1
@@ -357,7 +370,6 @@ class ControlFlow():
                 self.current_rotation = None
             else:
                 rot = direction * self.ang_vel
-                vel = 0
 
         elif self.rotation_queue:
             start = self.imu.checkImu().orientation
@@ -366,7 +378,8 @@ class ControlFlow():
         self.control.send_cmd_vel(float(vel), float(rot))
 
 
-    def reverse(self, timeout=1):
+    def reverse(self, timeout=1.0):
+        print("REVERSING")
         self.mode = ROBOTMODE.REVERSING
         self.timeout = timeout
     
@@ -379,6 +392,11 @@ class ControlFlow():
         #FOR FUTURE, NEED EGDE?
         self.destination_tag = tag
         self.pose = initial_pose
+        self.mode = ROBOTMODE.DRIVETOTAG
+
+    def stop(self, timeout=1.0):
+        self.mode = ROBOTMODE.STOPPED
+        self.timeout = timeout
 
     def search_for_tag(self, tag, direction, angle=90):
         self.rotate(angle, direction)

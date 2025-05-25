@@ -7,8 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 4
-
+challengeLevel = 1
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -41,26 +40,7 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
-        controller = ControlFlow(control, camera, imu)
-        def find_angle_and_distance(pose):
-            _, range, bearing, elevation = pose
-            distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
-            return bearing, distance
-        def april_tag_movement_new(stopping_distance=0.5,rotation=30,atomic_time=0.1):
-            image = camera.rosImg_to_cv2()
-            poses = camera.estimate_apriltag_pose(image)
-            for pose in poses:
-                print(type(pose[0]))
-                if pose[0] == 2:
-                    print("yay")
-                    controller.drive_to_tag(2, pose)
-                    controller.make_move(atomic_time)
-                    #angle, distance = find_angle_and_distance(pose)
-                    #turn certain angle
-                    #move distance and ensure apriltag still in sight
-                    #rotate for next apriltag
-                    #print(f"angle {angle}, distance {distance}")
-                print(f"pose is {pose}")
+        controller = ControlFlow(control, camera)
         def prevent_flip():
             quaternion = imu.checkImu()
             angles = imu.euler_from_quaternion(quaternion.orientation)
@@ -76,45 +56,38 @@ try:
             return True
         def detect_wall(scan_distance, distance_threshold):
             scan = lidar.checkScan()
-            dist_tuple = lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 20)
+            dist_tuple = lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 5)
             dist = dist_tuple[0] * math.cos(math.radians(np.deg2rad(dist_tuple[1])))
             #print(f"shortest: {dist_tuple}, dist: {dist}")
             #dist = dist_tuple[0]
             print(dist)
             if ( 0.0 <= dist <= distance_threshold):
-                #d = vt
-                #t = d/v
-                #time_moveback = (distance_threshold - dist)/0.2 + 0.15
-                #time_moveback = 0.1
-                #print(f"MOVEBACK {time_moveback} SECONDS")
-                #control.stop_keyboard_input()
                 control.send_cmd_vel(0.0,0.0)
                 controller.reverse(0.2)
-                #control.send_cmd_vel(0.0,0.0)
-                #control.set_cmd_vel(-0.4,0.0,time_moveback)
-                #time.sleep(time_moveback)
+
                 #control.start_keyboard_input()
             controller.make_move(atomic_time)
         print("CHALLENGE 1")
         scan_distance = 0.9
         distance_threshold = 0.40
-        atomic_time = 0.1
+        atomic_time = 0.03
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
-            #image = camera.rosImg_to_cv2()
+            #time.sleep(atomic_time)
+            image = camera.rosImg_to_cv2()
             ##print(image)
-            #poses = camera.estimate_apriltag_pose(image)
-            #print(poses)
-            #for pose in poses:
-            #    #print(type(pose[0]))
-            #    if pose[0] == 2:
-            #        print("yay")
-            #        controller.drive_to_tag(2, pose)
-            #        controller.make_move(atomic_time)
+            poses = camera.estimate_apriltag_pose(image)
+            print(poses)
+            for pose in poses:
+                #print(type(pose[0]))
+                if pose[0] == 2:
+                    print("yay")
+                    controller.drive_to_tag(2, pose)
+                    controller.make_move(atomic_time)
             #print("ya")
             #if prevent_flip():
-            detect_wall(scan_distance, distance_threshold)
+            #detect_wall(scan_distance, distance_threshold)
             #controller.reverse(0.1)
             #controller.make_move(atomic_time)
 

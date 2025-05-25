@@ -38,6 +38,9 @@ class IMU:
 
     def euler_from_quaternion(self, quaternion : Quaternion) -> tuple[float, float, float]:
         """ Convert the input quaternion into the corresponding Euler angles; roll, pitch, yaw. """
+        #print(type(quaternion))
+        if not quaternion:
+            return 0.0,0.0,0.0
         x = quaternion.x
         y = quaternion.y
         z = quaternion.z
