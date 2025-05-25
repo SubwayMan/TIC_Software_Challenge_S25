@@ -331,6 +331,7 @@ class ControlFlow():
                     angle, distance = self._find_angle_and_distance(self.pose)
                     print("Saw tag at angle ", angle, "distance", distance)
                     angle_rotate = abs(float(angle))
+                    
                     direction = 1 if angle > 0 else -1
                     self.dist = distance
               
@@ -346,14 +347,14 @@ class ControlFlow():
             c_edge = self.path.current()
 
             if c_edge.rotation:
-                direction = c_edge.rotation / abs(c_edge.rotation)
+                direction = c_edge.rotation[1]
             else:
                 direction = 1
 
             if self.dist <= c_edge.stop_dist:
                 next = self.path.next()
-                direction = int(next.rotation / abs(next.rotation))
-                self.search_for_tag(next.end, direction, abs(next.rotation))
+                angle, direction = next.rotation
+                self.search_for_tag(next.end, direction, angle)
 
             #may need to add driving correction since velocity * time may not be real distance
             #velocity = 1.0
@@ -367,19 +368,16 @@ class ControlFlow():
 
             # Safety Check
             # print("Desired tag: ", self.desired_tag)
+            print("SEARCH MODE")
             
             # Get tag data from the camera so far
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
+            print(tags)
             for tag in tags:
                 if tag[0] == self.desired_tag and -10 <= tag[2] <= 10:
                     #If the tag is found then no need to search more
                     c_edge = self.path.current()
                     node = c_edge.end
-
-                    if c_edge.rotation:
-                        direction = c_edge.rotation / abs(c_edge.rotation)
-                    else:
-                        direction = 1
 
                     self.drive_to_tag(node)
 
@@ -455,7 +453,7 @@ class ControlFlow():
         self.timeout = timeout
 
     def search_for_tag(self, tag, direction, angle=90):
-        self.rotate(angle, direction, 0.5)
+        self.rotate(angle, direction, 0.35)
         self.desired_tag = tag
         self.mode = ROBOTMODE.SEARCHFORTAG
 
