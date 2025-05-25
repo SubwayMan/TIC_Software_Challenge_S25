@@ -337,19 +337,21 @@ class ControlFlow():
                     angle, distance = self._find_angle_and_distance(self.pose)
                     print("Saw tag at angle ", angle, "distance", distance)
                     angle_rotate = abs(float(angle))
+                    x_offset = math.sin(math.radians(float(angle))) * distance
                     
-                    direction = 1 if angle > 0 else -1
+                    direction = 1 if x_offset > self.path.current().bias else -1
                     self.dist = distance
               
                     # if angle_rotate > 3:
                     #     print(f"ROTATING {angle_rotate} {direction}")
                     self.clear_rotations()
-                    self.rotate(0.4, direction, 0.5)
+                    self.rotate(10, direction, 0.3)
                     break
             else:
-                self.dist -= 0.05
+                d = self.vel * (time.time() - self.ltime)
+                self.dist -= d
                 #self.clear_rotations()
-
+            self.ltime = time.time()
             c_edge = self.path.current()
 
             if c_edge.rotation:

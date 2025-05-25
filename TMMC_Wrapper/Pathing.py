@@ -14,8 +14,9 @@ class RobotPath():
         self.edges.append(RobotPathEdge(start, end, stop_dist, rotation))
 
 class RobotPathEdge():
-    def __init__(self, tag1, tag2, stop_dist, rotation):
+    def __init__(self, tag1, tag2, stop_dist, rotation, bias=0):
         self.start = tag1
         self.end = tag2
         self.stop_dist = stop_dist
         self.rotation = rotation
+        self.bias = bias # targeted x offset from april tag
