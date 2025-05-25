@@ -418,7 +418,7 @@ class ControlFlow():
                 
 
         elif self.mode == ROBOTMODE.STOPSIGN:
-            print("IM LOOKING FOR SIGNS")
+            # print("IM LOOKING FOR SIGNS")
             detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
             if(self.stop_sign_seen == False):
                 self.vel = 0.5
@@ -427,7 +427,7 @@ class ControlFlow():
                 print(detection)
                 self.stop_sign_seen = True
                 # Conditions for stopping is fulfilled, now we slow down
-                self.vel = 0.15
+                self.vel = (max(0, 80 - (detection[3] - detection[1]))) / 160
                 print(self.vel)
             
             if(self.stop_sign_seen and detection[0] == False):
