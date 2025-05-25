@@ -7,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 7
+challengeLevel = 6
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -25,7 +25,7 @@ imu = IMU(robot)
 logging = Logging(robot)
 lidar = Lidar(robot)
 
-if challengeLevel <= 2:
+if challengeLevel <= 0:
     control.start_keyboard_control()
     rclpy.spin_once(robot, timeout_sec=0.1)
 
@@ -83,7 +83,7 @@ try:
                 #print(type(pose[0]))
                 if pose[0] == 2:
                     print("yay")
-                    controller.drive_to_tag(2, pose)
+                    controller.drive_to_tag(2)
                     controller.make_move(atomic_time)
             #print("ya")
             #if prevent_flip():
@@ -154,18 +154,11 @@ try:
     if challengeLevel == 6:
         print("TEST 6 OMG")
         controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
+        controller.search_for_tag(5, -1, 360)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
             controller.make_move(0.1)
-    
-    if challengeLevel == 7:
-        controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.STOPSIGN)
-        while rclpy.ok():
-            rclpy.spin_once(robot, timeout_sec=0.1)
-            time.sleep(0.1)
-            controller.make_move(0.1)
-
             
 
 except KeyboardInterrupt:

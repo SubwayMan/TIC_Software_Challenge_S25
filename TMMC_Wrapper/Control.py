@@ -275,11 +275,13 @@ class ControlFlow():
         self.camera = camera
         self.degree = 0
         self.direction = 1
-        self.ang_vel = 0.9
+        self.ang_vel = 0.4
+        self.dist = 10000
+        self.ltime = time.time()
 
         # for movement (rotation)
         self.rotation_queue = deque()
-        self.current_rotation = None # needs to be a tuple (target_degrees, direction)
+        self.current_rotation = None # needs to be a tuple (target_degrees, direction, ang_vel)
 
         # for stopsign
         self.stop_sign_seen = False
@@ -316,21 +318,39 @@ class ControlFlow():
 
         elif self.mode == ROBOTMODE.DRIVETOTAG:
             print("MODE DRIVE TO TAG")
+            self.vel = 0.5
             self.control.stop_keyboard_input()
-            angle, distance = self._find_angle_and_distance(self.pose)
-            angle_rotate = abs(float(angle))
-            direction = -1 if angle > 0 else 1
-            print(f"ROTATING {angle_rotate} {direction}")
-            self.control.rotate(angle_rotate, direction)
+
+            tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
+            for tag in tags:
+                if tag[0] == self.destination_tag:
+                    self.pose = tag
+                    angle, distance = self._find_angle_and_distance(self.pose)
+                    print("Saw tag at angle ", angle, "distance", distance)
+                    angle_rotate = abs(float(angle))
+                    direction = 1 if angle > 0 else -1
+                    self.dist = distance
+              
+                    # if angle_rotate > 3:
+                    #     print(f"ROTATING {angle_rotate} {direction}")
+                    self.clear_rotations()
+                    self.rotate(0.4, direction, 0.5)
+                    break
+            else:
+                self.dist -= 0.05
+                #self.clear_rotations()
+
+            if self.dist <= 0.4:
+                self.mode = ROBOTMODE.INIT
+
             #may need to add driving correction since velocity * time may not be real distance
             #velocity = 1.0
             #time_forward = distance/velocity
             #print(f"MOVING MOVING sleeping for {time_forward}")
             #self.control.set_cmd_vel(velocity, 0.0, time_forward)
             #time.sleep(time_forward)
-            print("ya")
-            self.mode = self.default_mode
         elif self.mode == ROBOTMODE.SEARCHFORTAG:
+            self.vel = 0
             # Requirement: The desired tag must be set, the angle to turn and multiplier +- 1
 
             # Safety Check
@@ -346,6 +366,7 @@ class ControlFlow():
                     self.current_rotation = None
 
                     self.mode = ROBOTMODE.INIT
+
         elif self.mode == ROBOTMODE.STOPSIGN:
             detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
             self.vel = 0.5
@@ -359,9 +380,10 @@ class ControlFlow():
                 self.stop_sign_seen = False
                 self.vel = 0.0
                 self.mode = ROBOTMODE.INIT
-
+                self.drive_to_tag(self.desired_tag)
 
         elif self.mode == ROBOTMODE.INIT:
+            self.vel = 0
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
             if tags:
@@ -377,7 +399,7 @@ class ControlFlow():
         vel = self.vel
 
         if self.current_rotation:
-            start_orientation, target, direction = self.current_rotation
+            start_orientation, target, direction, angvel = self.current_rotation
             _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
             yaw_start_deg = math.degrees(yaw_start)
             q_current = self.imu.checkImu().orientation
@@ -388,12 +410,12 @@ class ControlFlow():
             if current_diff >= abs(target):
                 self.current_rotation = None
             else:
-                rot = direction * self.ang_vel
+                rot = direction * angvel
 
         elif self.rotation_queue:
             start = self.imu.checkImu().orientation
             self.current_rotation = (start, *self.rotation_queue.popleft())
-
+        print("Movement", vel, rot)
         self.control.send_cmd_vel(float(vel), float(rot))
 
 
@@ -407,10 +429,9 @@ class ControlFlow():
         self.mode = ROBOTMODE.STOPPED
         self.timeout = timeout
 
-    def drive_to_tag(self, tag, initial_pose):
+    def drive_to_tag(self, tag):
         #FOR FUTURE, NEED EGDE?
         self.destination_tag = tag
-        self.pose = initial_pose
         self.mode = ROBOTMODE.DRIVETOTAG
 
     def stop(self, timeout=1.0):
@@ -418,7 +439,7 @@ class ControlFlow():
         self.timeout = timeout
 
     def search_for_tag(self, tag, direction, angle=90):
-        self.rotate(angle, direction)
+        self.rotate(angle, direction, 0.3)
         self.desired_tag = tag
         self.mode = ROBOTMODE.SEARCHFORTAG
 
@@ -431,8 +452,15 @@ class ControlFlow():
         status, x1, y1, x2, y2 = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
         return status and (y2-y1)/(x2-x1) <= 1.2
     
-    def rotate(self, degrees, direction):
-        self.rotation_queue.append((degrees, -direction))
+    def rotate(self, degrees, direction, angvel=1):
+        if self.current_rotation:
+            self.rotation_queue.append((degrees, -direction, angvel))
+        else:
+            self.current_rotation = (self.imu.checkImu().orientation, degrees, -direction, angvel)
+
+    def clear_rotations(self):
+        self.current_rotation = None
+        self.rotation_queue = deque()
         
 
 
