@@ -8,6 +8,7 @@ import rclpy
 import math
 import threading
 from pynput.keyboard import Listener
+from collections import deque
 from .Robot import Robot
 
 from enum import Enum
@@ -250,22 +251,31 @@ ROBOTMODE = Enum('ROBOTMODE',
                   ])
 
 class ControlFlow():
-    def __init__(self, control: Control, camera: Camera, mode=ROBOTMODE.KEYBOARD):
+    def __init__(self, control: Control, camera: Camera, imu: IMU, mode=ROBOTMODE.KEYBOARD):
         self.control = control
+        self.imu = imu
         self.mode = mode
         self.default_mode = self.mode
         self.timeout = 1
         self.destination_tag = 1
         self.pose = None
         self.last_mode = None
+        self.vel = 0
 
         # variables for SEARCHFORTAG
         self.desired_tag = None
         self.camera = camera
         self.degree = 0
         self.direction = 1
+        self.ang_vel = 0.5
+
+        # for movement (rotation)
+        self.rotation_queue = deque()
+        self.current_rotation = None # needs to be a tuple (target_degrees, direction)
 
     def make_move(self, atomic_time):
+        print("IM LOOOOOPINGINGINGIN")
+        self.handle_movement()
         if self.mode == ROBOTMODE.KEYBOARD:
             self.control.start_keyboard_input()
             if self.detect_stop_sign():
@@ -359,6 +369,36 @@ class ControlFlow():
                 pass
 
                 
+    def handle_movement(self):
+        def minimal_angle_diff(start, current):
+            diff = (current - start + 180) % 360 - 180
+            return abs(diff)
+
+        rot = 0
+        vel = self.vel
+        print(self.rotation_queue)
+        if self.current_rotation:
+            start_orientation, target, direction = self.current_rotation
+            _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
+            yaw_start_deg = math.degrees(yaw_start)
+            q_current = self.imu.checkImu().orientation
+            _, _, yaw_current = self.imu.euler_from_quaternion(q_current)
+            yaw_current_deg = math.degrees(yaw_current)
+            current_diff = minimal_angle_diff(yaw_start_deg, yaw_current_deg)
+
+            if current_diff >= abs(target):
+                self.current_rotation = None
+            else:
+                rot = direction * self.ang_vel
+                vel = 0
+
+            print("I'm rotating", self.current_rotation, rot)
+
+        elif self.rotation_queue:
+            start = self.imu.checkImu().orientation
+            self.current_rotation = (start, *self.rotation_queue.pop())
+
+        self.control.send_cmd_vel(float(vel), float(rot))
 
 
     def reverse(self, timeout=1):
@@ -383,6 +423,10 @@ class ControlFlow():
     def detect_stop_sign(self):
         status, x1, y1, x2, y2 = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
         return status and (y2-y1)/(x2-x1) <= 1.2
+    
+    def rotate(self, degrees, direction):
+        self.rotation_queue.append((degrees, direction))
+        
 
 
 

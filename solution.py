@@ -22,7 +22,7 @@ if not "robot" in globals():
     
 control = Control(robot)
 camera = Camera(robot)
-controller = ControlFlow(control, camera)
+# controller = ControlFlow(control, camera)
 imu = IMU(robot)
 logging = Logging(robot)
 lidar = Lidar(robot)
@@ -42,7 +42,7 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
-        controller = ControlFlow(control)
+        controller = ControlFlow(control, camera, imu)
         def find_angle_and_distance(pose):
             _, range, bearing, elevation = pose
             distance = (range * np.cos(np.deg2rad(elevation)))/np.cos(np.deg2rad(bearing))
@@ -122,7 +122,7 @@ try:
     if challengeLevel == 2:
         atomic_time = 0.1
         should_stop = False
-        controller = ControlFlow(control)
+        controller = ControlFlow(control, camera, imu)
 
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
@@ -154,7 +154,7 @@ try:
         for edge in edges:
             path.add_edge(*edge)
 
-        controller = ControlFlow(control, camera)
+        controller = ControlFlow(control, camera, imu)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
@@ -181,6 +181,17 @@ try:
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
             # Write your solution here for challenge level 5
+
+    if challengeLevel == 6:
+        print("TEST 6 OMG")
+        controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
+        controller.rotate(90, 1)
+        controller.rotate(90, -1)
+        while rclpy.ok():
+            rclpy.spin_once(robot, timeout_sec=0.1)
+            time.sleep(0.1)
+            controller.make_move(0.1)
+
             
 
 except KeyboardInterrupt:

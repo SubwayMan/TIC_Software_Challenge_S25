@@ -70,3 +70,10 @@ class IMU:
 
         #is desired angle met
         return math.isclose(rotation_angle, desired_rotation_angle, abs_tol=0.01)  # Adjust tolerance as needed
+
+    def has_rotation_occurred_degrees(self, orientation1 : Quaternion, orientation2 : Quaternion, desired_rotation_angle : float, direction: int):
+        if direction == "-1": #left
+            rads = math.radians(desired_rotation_angle)
+        else:
+            rads = math.radians(-1 * desired_rotation_angle)
+        return self.has_rotation_occurred(orientation1, orientation2, rads)
