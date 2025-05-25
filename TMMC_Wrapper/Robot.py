@@ -138,8 +138,10 @@ class Robot(Node):
     def camera_info_listener_callback(self, msg : CameraInfo):
         ''' This function is used to store camera information. '''
         self.last_camera_info_msg = msg
+    
         if self.k is None:
             self.k = np.array(msg.k).reshape((3, 3))
+
         self.camera_info_future.set_result(msg)
         self.camera_info_future.done()
     

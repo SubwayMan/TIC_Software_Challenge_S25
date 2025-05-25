@@ -7,7 +7,11 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
+<<<<<<< HEAD
 challengeLevel = 4
+=======
+challengeLevel = 6
+>>>>>>> b5efc3c86602916ab59c0cebc54486dc8cda27b1
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -25,7 +29,7 @@ imu = IMU(robot)
 logging = Logging(robot)
 lidar = Lidar(robot)
 
-if challengeLevel <= 2:
+if challengeLevel <= 0:
     control.start_keyboard_control()
     rclpy.spin_once(robot, timeout_sec=0.1)
 
@@ -78,6 +82,7 @@ try:
             #time.sleep(atomic_time)
             #image = camera.rosImg_to_cv2()
             ##print(image)
+<<<<<<< HEAD
             #poses = camera.estimate_apriltag_pose(image)
             #print(poses)
             #for pose in poses:
@@ -86,6 +91,16 @@ try:
             #        print("yay")
             #        controller.drive_to_tag(2, pose)
             #        controller.make_move(atomic_time)
+=======
+            poses = camera.estimate_apriltag_pose(image)
+            print(poses)
+            for pose in poses:
+                #print(type(pose[0]))
+                if pose[0] == 2:
+                    print("yay")
+                    controller.drive_to_tag(2)
+                    controller.make_move(atomic_time)
+>>>>>>> b5efc3c86602916ab59c0cebc54486dc8cda27b1
             #print("ya")
             #if prevent_flip():
             #detect_wall(scan_distance, distance_threshold)
@@ -101,7 +116,7 @@ try:
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
             detection = camera.ML_predict_stop_sign(camera.rosImg_to_cv2())
-
+            print(detection)
             if (detection[0] == True and (detection[4] - detection[2])/ (detection[3] - detection[1]) <= 1.2):
                 print("STOP ACTIVATED")
                 should_stop = True
@@ -109,7 +124,7 @@ try:
                 print("STOPPING NOW")
                 should_stop = False
                 control.stop_keyboard_input()
-                control.set_cmd_vel(0.0,0.0, 1.0)
+                control.set_cmd_vel(-0.3,0.0, 0.1)
                 time.sleep(1.0)
                 print("RESUME")
                 control.start_keyboard_input()
@@ -155,13 +170,11 @@ try:
     if challengeLevel == 6:
         print("TEST 6 OMG")
         controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
-        controller.rotate(90, 1)
-        controller.rotate(90, -1)
+        controller.search_for_tag(5, -1, 360)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
             controller.make_move(0.1)
-
             
 
 except KeyboardInterrupt:

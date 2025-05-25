@@ -1,4 +1,6 @@
 from .Robot import Robot
+import math
+import numpy as np
 from sensor_msgs.msg import LaserScan
 
 class Lidar:
@@ -10,6 +12,45 @@ class Lidar:
         ''' Waits until a new scan message is received and returns that scan message. '''
         self.robot.spin_until_future_completed(self.robot.scan_future)
         return self.robot.last_scan_msg
+
+    def detect_box(self, scan: LaserScan):
+        if scan is None:
+            print("Warning: No LIDAR Data")
+            return -1,-1,-1,-1
+        print(type(scan.ranges))
+        if self.robot.IS_SIM: 
+            front_range = scan.ranges[-45:45]
+            front = min(front_range)
+            front_angle = front_range.index(front)/360
+            right_range = scan.ranges[45:135]
+            right = min(right_range)
+            right_angle = right_range.index(right)/360 
+            back_range = scan.ranges[135:225]
+            back = min(back_range)
+            back_angle = back_range.index(back)/360
+            left_range = scan.ranges[225:-45]
+            left = min(left_range)
+            left_angle = left_range.index(left)/360
+        else:
+            front_range = scan.ranges[90:270]
+            front = min(front_range)
+            front_angle = front_range.index(front)/720
+            left_range = scan.ranges[270:450]
+            left = min(left_range)
+            left_angle = left_range.index(left)/720
+            back_range = scan.ranges[450:630]
+            back = min(back_range)
+            back_angle = back_range.index(back)/720
+            right_range = scan.ranges[-90:90]
+            right = min(right_range)
+            right_angle = right_range.index(right)/720
+        
+        front_dist = front * math.cos(front_angle*np.pi)
+        back_dist = back * math.cos(back_angle*np.pi)
+        left_dist = left * math.cos(left_angle*np.pi)
+        right_dist = right * math.cos(right_angle*np.pi)
+        return front_dist, right_dist, back_dist, left_dist
+        
 
     def detect_obstacle_in_cone(self, scan : LaserScan, distance : float, center : float, offset_angle : float) -> tuple[float, float]:
         ''' Analyzes the scan data within the cone to detect and return the distance and angle of the closest obstacle. '''
