@@ -354,6 +354,7 @@ class ControlFlow():
             if self.dist <= c_edge.stop_dist:
                 next = self.path.next()
                 angle, direction = next.rotation
+                print("SEARCH FOR TAG", next.end, direction, angle)
                 self.search_for_tag(next.end, direction, angle)
 
             #may need to add driving correction since velocity * time may not be real distance
@@ -368,7 +369,7 @@ class ControlFlow():
 
             # Safety Check
             # print("Desired tag: ", self.desired_tag)
-            print("SEARCH MODE")
+            print("SEARCH MODE", self.desired_tag)
             
             # Get tag data from the camera so far
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())

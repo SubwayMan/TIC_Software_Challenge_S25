@@ -7,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 3
+challengeLevel = 7
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = False
@@ -117,10 +117,10 @@ try:
         # create path
         # find 7->3->5->6
         edges = [
-            (6, 7, 0.1, (90, -1)),
-            (7, 3, 1.5, (90, -1)),
-            (3, 5, 0.2, (45, -1)),
-            (5, 6, 0.1, (135, -1)),
+            (6, 7, 0.5, (90, -1)),
+            (7, 3, 1.2, (90, -1)),
+            (3, 5, 0.5, (45, -1)),
+            (5, 6, 0.5, (135, -1)),
         ]               
         path = RobotPath()
         for edge in edges:
