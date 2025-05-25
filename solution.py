@@ -7,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 1
+challengeLevel = 7
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -100,7 +100,7 @@ try:
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
             detection = camera.ML_predict_stop_sign(camera.rosImg_to_cv2())
-
+            print(detection)
             if (detection[0] == True and (detection[4] - detection[2])/ (detection[3] - detection[1]) <= 1.2):
                 print("STOP ACTIVATED")
                 should_stop = True
@@ -108,7 +108,7 @@ try:
                 print("STOPPING NOW")
                 should_stop = False
                 control.stop_keyboard_input()
-                control.set_cmd_vel(0.0,0.0, 1.0)
+                control.set_cmd_vel(-0.3,0.0, 0.1)
                 time.sleep(1.0)
                 print("RESUME")
                 control.start_keyboard_input()
@@ -154,8 +154,13 @@ try:
     if challengeLevel == 6:
         print("TEST 6 OMG")
         controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
-        controller.rotate(90, 1)
-        controller.rotate(90, -1)
+        while rclpy.ok():
+            rclpy.spin_once(robot, timeout_sec=0.1)
+            time.sleep(0.1)
+            controller.make_move(0.1)
+    
+    if challengeLevel == 7:
+        controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.STOPSIGN)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)

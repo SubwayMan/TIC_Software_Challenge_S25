@@ -246,6 +246,7 @@ class ROBOTMODE:
     DRIVETOTAG=3
     SEARCHFORTAG=4
     INIT=5 # check what tag is at the beginning
+    STOPSIGN=6
 
 ROBOTMODE = Enum('ROBOTMODE', 
                  [('KEYBOARD', 0), 
@@ -253,7 +254,8 @@ ROBOTMODE = Enum('ROBOTMODE',
                   ('STOPPED', 2), 
                   ('DRIVETOTAG', 3), 
                   ('SEARCHFORTAG', 4),
-                  ('INIT', 5)
+                  ('INIT', 5),
+                  ('STOPSIGN', 6)
                   ])
 
 class ControlFlow():
@@ -278,6 +280,9 @@ class ControlFlow():
         # for movement (rotation)
         self.rotation_queue = deque()
         self.current_rotation = None # needs to be a tuple (target_degrees, direction)
+
+        # for stopsign
+        self.stop_sign_seen = False
 
     def make_move(self, atomic_time):
         self.handle_movement()
@@ -341,6 +346,20 @@ class ControlFlow():
                     self.current_rotation = None
 
                     self.mode = ROBOTMODE.INIT
+        elif self.mode == ROBOTMODE.STOPSIGN:
+            detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
+            self.vel = 0.5
+            if detection[0] == True and (detection[4] - detection[2]) / (detection[3] - detection[1]) <= 1.2:
+                self.stop_sign_seen = True
+                # Conditions for stopping is fulfilled, now we slow down
+                self.vel = (detection[4] - detection[2]) / 300
+            
+            if(self.stop_sign_seen and detection[0] == False):
+                # Stop sign is not seen anymore
+                self.stop_sign_seen = False
+                self.vel = 0.0
+                self.mode = ROBOTMODE.INIT
+
 
         elif self.mode == ROBOTMODE.INIT:
             self.control.stop_keyboard_input()
