@@ -8,6 +8,7 @@ import rclpy
 import math
 import threading
 from pynput.keyboard import Listener
+from collections import deque
 from .Robot import Robot
 
 from enum import Enum
@@ -250,22 +251,30 @@ ROBOTMODE = Enum('ROBOTMODE',
                   ])
 
 class ControlFlow():
-    def __init__(self, control: Control, camera: Camera, mode=ROBOTMODE.KEYBOARD):
+    def __init__(self, control: Control, camera: Camera, imu: IMU, mode=ROBOTMODE.KEYBOARD):
         self.control = control
+        self.imu = imu
         self.mode = mode
         self.default_mode = self.mode
         self.timeout = 1
         self.destination_tag = 1
         self.pose = None
         self.last_mode = None
+        self.vel = 0.5
 
         # variables for SEARCHFORTAG
         self.desired_tag = None
         self.camera = camera
         self.degree = 0
         self.direction = 1
+        self.ang_vel = 0.5
+
+        # for movement (rotation)
+        self.rotation_queue = deque()
+        self.current_rotation = None # needs to be a tuple (starting_quaternion, target_degrees, direction)
 
     def make_move(self, atomic_time):
+        self.handle_movement()
         if self.mode == ROBOTMODE.KEYBOARD:
             self.control.start_keyboard_input()
             if self.detect_stop_sign():
@@ -329,6 +338,21 @@ class ControlFlow():
             if tags:
                 pass
                 
+    def handle_movement(self):
+        rot = 0
+        vel = self.vel
+
+        if self.current_rotation:
+            start_orientation, target, direction = self.current_rotation
+            if self.imu.has_rotation_occurred_degrees(start_orientation, self.imu.checkImu(), target, direction):
+                if self.rotation_queue:
+                    self.current_rotation = self.rotation_queue.pop()
+                    rot = direction * self.ang_vel
+                else:
+                    self.current_rotation = None
+                    rot = 0
+
+        self.control.send_cmd_vel(rot, vel)
 
 
     def reverse(self, timeout=1):
@@ -353,6 +377,10 @@ class ControlFlow():
     def detect_stop_sign(self):
         status, x1, y1, x2, y2 = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
         return status and (y2-y1)/(x2-x1) <= 1.2
+    
+    def rotate(self, degrees, direction):
+        self.rotation_queue.append((self.imu.checkImu(), degrees, direction))
+        
 
 
 
