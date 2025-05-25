@@ -340,19 +340,30 @@ class ControlFlow():
                 pass
                 
     def handle_movement(self):
+        def minimal_angle_diff(start, current):
+            diff = (current - start + 180) % 360 - 180
+            return abs(diff)
+
         rot = 0
         vel = self.vel
         print(self.rotation_queue)
         if self.current_rotation:
             start_orientation, target, direction = self.current_rotation
-            if self.imu.has_rotation_occurred_degrees(start_orientation, self.imu.checkImu().orientation, target, direction):
-                if self.rotation_queue:
-                    self.current_rotation = self.rotation_queue.pop()
-                else:
-                    self.current_rotation = None
+            _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
+            yaw_start_deg = math.degrees(yaw_start)
+            q_current = self.imu.checkImu().orientation
+            _, _, yaw_current = self.imu.euler_from_quaternion(q_current)
+            yaw_current_deg = math.degrees(yaw_current)
+            current_diff = minimal_angle_diff(yaw_start_deg, yaw_current_deg)
+
+            if current_diff >= abs(target):
+                self.current_rotation = None
             else:
                 rot = direction * self.ang_vel
+                vel = 0
+
             print("I'm rotating", self.current_rotation, rot)
+
         elif self.rotation_queue:
             self.current_rotation = self.rotation_queue.pop()
 
