@@ -284,6 +284,8 @@ class ControlFlow():
         self.dist = 10000
         self.ltime = time.time()
         self.path = path
+        self.parity = 1
+        self.flag = False
 
         # for movement (rotation)
         self.rotation_queue = deque()
@@ -395,6 +397,22 @@ class ControlFlow():
                     node = c_edge.end
 
                     self.drive_to_tag(node)
+
+            if self.current_rotation == None:
+                if self.timeout <= 0:
+                    c_edge = self.path.current()
+                    node = c_edge.end
+                    self.drive_to_tag(node)
+                else: 
+                    self.rotate(5, self.parity, 0.5)
+                    self.parity *= -1
+                    self.vel = 0.1
+                    print("CREEPING")
+                    self.flag = True
+
+            if self.flag:
+                self.timeout -= atomic_time
+                
 
         elif self.mode == ROBOTMODE.STOPSIGN:
             detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
