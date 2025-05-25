@@ -317,8 +317,37 @@ class ControlFlow():
                 for tag in tags:
                     if tag[0] == self.desired_tag:
                         #If the tag is found then no need to search more
+                        print(tag)
+                        #  Realign to make the robot facing straight to the tag
+
+                        offset = tag[2]
+                        deltaTime = math.sin(np.deg2rad(abs(offset))) * tag[1] / 0.2
                         
-                        self.mode = ROBOTMODE.DRIVETOTAG
+                        print("Offset: ", offset)
+                        print("Distance: ", tag[1])
+                        print("Time: ", deltaTime)
+                        print("Velocity: ", 0.2)
+                        print("Angle: ", math.sin(np.deg2rad(abs(offset))))
+
+
+                        # On the right side of the tag
+                        if (offset < 0):
+                            # 90 + offset would be less than 90
+                            self.control.rotate(90 + offset, 1)
+                            time.sleep(1)
+                            self.control.set_cmd_vel(0.2, 0.0, deltaTime)
+                            time.sleep(1)
+                            self.control.rotate(90, -1)
+                        else:
+                            # On the left side of the tag
+                            # 90 - offset would be less than 90
+                            self.control.rotate(90 - offset, -1)
+                            time.sleep(1)
+                            self.control.set_cmd_vel(self.control.robot.CONST_speed_control, 0.0, deltaTime)
+                            time.sleep(1)
+                            self.control.rotate(90, 1)
+                        time.sleep(100)
+                        # self.mode = ROBOTMODE.DRIVETOTAG
                         self.destination_tag = self.desired_tag
                         self.pose = tag  
             else:
@@ -328,6 +357,7 @@ class ControlFlow():
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
             if tags:
                 pass
+
                 
 
 
