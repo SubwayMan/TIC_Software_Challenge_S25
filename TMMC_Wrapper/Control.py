@@ -274,6 +274,7 @@ class ControlFlow():
         self.degree = 0
         self.direction = 1
         self.ang_vel = 0.9
+        self.dist = None
 
         # for movement (rotation)
         self.rotation_queue = deque()
@@ -311,21 +312,27 @@ class ControlFlow():
 
         elif self.mode == ROBOTMODE.DRIVETOTAG:
             print("MODE DRIVE TO TAG")
+            self.vel = 0.5
             self.control.stop_keyboard_input()
             angle, distance = self._find_angle_and_distance(self.pose)
             angle_rotate = abs(float(angle))
             direction = -1 if angle > 0 else 1
             print(f"ROTATING {angle_rotate} {direction}")
-            self.control.rotate(angle_rotate, direction)
+
+            if distance <= 10:
+                self.mode = ROBOTMODE.INIT
+
+            if angle_rotate > 3:
+                self.clear_rotations()
+                self.rotate(0.5, direction)
             #may need to add driving correction since velocity * time may not be real distance
             #velocity = 1.0
             #time_forward = distance/velocity
             #print(f"MOVING MOVING sleeping for {time_forward}")
             #self.control.set_cmd_vel(velocity, 0.0, time_forward)
             #time.sleep(time_forward)
-            print("ya")
-            self.mode = self.default_mode
         elif self.mode == ROBOTMODE.SEARCHFORTAG:
+            self.vel = 0
             # Requirement: The desired tag must be set, the angle to turn and multiplier +- 1
 
             # Safety Check
@@ -343,6 +350,7 @@ class ControlFlow():
                     self.mode = ROBOTMODE.INIT
 
         elif self.mode == ROBOTMODE.INIT:
+            self.vel = 0
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
             if tags:
@@ -414,6 +422,9 @@ class ControlFlow():
     
     def rotate(self, degrees, direction):
         self.rotation_queue.append((degrees, -direction))
+
+    def clear_rotations(self):
+        self.rotation_queue = deque()
         
 
 
