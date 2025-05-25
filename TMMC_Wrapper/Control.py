@@ -563,9 +563,9 @@ class ControlFlow():
     
     def rotate(self, degrees, direction, angvel=1):
         if self.current_rotation:
-            self.rotation_queue.append((degrees, direction, angvel))
+            self.rotation_queue.append((degrees, -direction, angvel))
         else:
-            self.current_rotation = (self.imu.checkImu().orientation, degrees, direction, angvel)
+            self.current_rotation = (self.imu.checkImu().orientation, degrees, -direction, angvel)
 
     def clear_rotations(self):
         self.current_rotation = None
