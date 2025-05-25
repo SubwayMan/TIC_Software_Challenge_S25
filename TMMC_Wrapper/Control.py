@@ -260,7 +260,7 @@ class ControlFlow():
         self.destination_tag = 1
         self.pose = None
         self.last_mode = None
-        self.vel = 0.5
+        self.vel = 0
 
         # variables for SEARCHFORTAG
         self.desired_tag = None
@@ -367,7 +367,7 @@ class ControlFlow():
         elif self.rotation_queue:
             self.current_rotation = self.rotation_queue.pop()
 
-        self.control.send_cmd_vel(float(rot), float(vel))
+        self.control.send_cmd_vel(float(vel), float(rot))
 
 
     def reverse(self, timeout=1):
