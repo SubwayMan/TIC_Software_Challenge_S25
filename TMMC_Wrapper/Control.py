@@ -10,6 +10,7 @@ import threading
 from pynput.keyboard import Listener
 from collections import deque
 from .Robot import Robot
+from .Pathing import RobotPath
 
 from enum import Enum
 
@@ -262,7 +263,7 @@ ROBOTMODE = Enum('ROBOTMODE',
                   ])
 
 class ControlFlow():
-    def __init__(self, control: Control, camera: Camera, imu: IMU,lidar: Lidar, mode=ROBOTMODE.KEYBOARD):
+    def __init__(self, control: Control, camera: Camera, imu: IMU, lidar=None,mode: ROBOTMODE =ROBOTMODE.KEYBOARD, path: RobotPath=None):
         self.control = control
         self.imu = imu
         self.mode = mode
@@ -282,11 +283,13 @@ class ControlFlow():
         self.ang_vel = 0.4
         self.dist = 10000
         self.ltime = time.time()
+        self.path = path
 
         # for movement (rotation)
         self.rotation_queue = deque()
-        self.current_rotation = None # needs to be a tuple (target_degrees, direction)
         self.previous_mode = self.mode
+        self.current_rotation = None # needs to be a tuple (target_degrees, direction, ang_vel)
+        self.stop_dist = None
 
         # for stopsign
         self.stop_sign_seen = False
@@ -332,6 +335,7 @@ class ControlFlow():
                     angle, distance = self._find_angle_and_distance(self.pose)
                     print("Saw tag at angle ", angle, "distance", distance)
                     angle_rotate = abs(float(angle))
+                    
                     direction = 1 if angle > 0 else -1
                     self.dist = distance
               
@@ -344,8 +348,18 @@ class ControlFlow():
                 self.dist -= 0.05
                 #self.clear_rotations()
 
-            if self.dist <= 0.4:
-                self.mode = ROBOTMODE.INIT
+            c_edge = self.path.current()
+
+            if c_edge.rotation:
+                direction = c_edge.rotation[1]
+            else:
+                direction = 1
+
+            if self.dist <= c_edge.stop_dist:
+                next = self.path.next()
+                angle, direction = next.rotation
+                print("SEARCH FOR TAG", next.end, direction, angle)
+                self.search_for_tag(next.end, direction, angle)
 
             #may need to add driving correction since velocity * time may not be real distance
             velocity = 1.0
@@ -369,6 +383,7 @@ class ControlFlow():
 
             # Safety Check
             # print("Desired tag: ", self.desired_tag)
+            print("SEARCH MODE", self.desired_tag)
             
             # Get tag data from the camera so far
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
@@ -376,11 +391,10 @@ class ControlFlow():
             for tag in tags:
                 if tag[0] == self.desired_tag and -10 <= tag[2] <= 10:
                     #If the tag is found then no need to search more
-                    self.destination_tag = self.desired_tag
-                    self.pose = tag
-                    self.current_rotation = None
+                    c_edge = self.path.current()
+                    node = c_edge.end
 
-                    self.mode = ROBOTMODE.DRIVETOTAG
+                    self.drive_to_tag(node)
 
         elif self.mode == ROBOTMODE.STOPSIGN:
             detection = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
@@ -486,7 +500,7 @@ class ControlFlow():
         self.timeout = timeout
 
     def search_for_tag(self, tag, direction, angle=90):
-        self.rotate(angle, direction, 0.3)
+        self.rotate(angle, direction, 0.35)
         self.desired_tag = tag
         self.mode = ROBOTMODE.SEARCHFORTAG
 

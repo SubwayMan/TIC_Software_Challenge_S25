@@ -7,14 +7,10 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-<<<<<<< HEAD
 challengeLevel = 4
-=======
-challengeLevel = 6
->>>>>>> b5efc3c86602916ab59c0cebc54486dc8cda27b1
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
-is_SIM = True
+is_SIM = False
 
 # Set to True if you want to run in debug mode with extra print statements, False otherwise
 Debug = False
@@ -82,7 +78,6 @@ try:
             #time.sleep(atomic_time)
             #image = camera.rosImg_to_cv2()
             ##print(image)
-<<<<<<< HEAD
             #poses = camera.estimate_apriltag_pose(image)
             #print(poses)
             #for pose in poses:
@@ -91,16 +86,6 @@ try:
             #        print("yay")
             #        controller.drive_to_tag(2, pose)
             #        controller.make_move(atomic_time)
-=======
-            poses = camera.estimate_apriltag_pose(image)
-            print(poses)
-            for pose in poses:
-                #print(type(pose[0]))
-                if pose[0] == 2:
-                    print("yay")
-                    controller.drive_to_tag(2)
-                    controller.make_move(atomic_time)
->>>>>>> b5efc3c86602916ab59c0cebc54486dc8cda27b1
             #print("ya")
             #if prevent_flip():
             #detect_wall(scan_distance, distance_threshold)
@@ -133,19 +118,21 @@ try:
         # create path
         # find 7->3->5->6
         edges = [
-            (7, 3, 1.5, (45, -1)),
-            (3, 5, 0.2, (135, -1)),
-            (5, 6, 0.1, (90, -1)),
-            (6, 7, 0.1, (90, -1))
-        ]
+            (6, 7, 0.5, (90, -1)),
+            (7, 3, 1.2, (90, -1)),
+            (3, 5, 0.5, (45, -1)),
+            (5, 6, 0.5, (135, -1)),
+        ]               
         path = RobotPath()
         for edge in edges:
             path.add_edge(*edge)
 
-        controller = ControlFlow(control, camera, imu)
+        controller = ControlFlow(control, camera, imu, path=path)
+        controller.search_for_tag(7, -1, 360)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
+            controller.make_move(0.1)
             # Write your solution here for challenge level 3 (or 3.5)
 
     if challengeLevel == 4:
