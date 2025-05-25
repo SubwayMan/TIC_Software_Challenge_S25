@@ -7,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 1
+challengeLevel = 4
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = True
@@ -40,7 +40,7 @@ try:
             # Challenge 0 is pure keyboard control, you do not need to change this it is just for your own testing
 
     if challengeLevel == 1:
-        controller = ControlFlow(control, camera)
+        controller = ControlFlow(control, camera, imu, lidar)
         def prevent_flip():
             quaternion = imu.checkImu()
             angles = imu.euler_from_quaternion(quaternion.orientation)
@@ -74,17 +74,18 @@ try:
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=atomic_time)
             time.sleep(atomic_time)
+            controller.make_move(0.1)
             #time.sleep(atomic_time)
-            image = camera.rosImg_to_cv2()
+            #image = camera.rosImg_to_cv2()
             ##print(image)
-            poses = camera.estimate_apriltag_pose(image)
-            print(poses)
-            for pose in poses:
-                #print(type(pose[0]))
-                if pose[0] == 2:
-                    print("yay")
-                    controller.drive_to_tag(2, pose)
-                    controller.make_move(atomic_time)
+            #poses = camera.estimate_apriltag_pose(image)
+            #print(poses)
+            #for pose in poses:
+            #    #print(type(pose[0]))
+            #    if pose[0] == 2:
+            #        print("yay")
+            #        controller.drive_to_tag(2, pose)
+            #        controller.make_move(atomic_time)
             #print("ya")
             #if prevent_flip():
             #detect_wall(scan_distance, distance_threshold)
@@ -133,17 +134,17 @@ try:
             # Write your solution here for challenge level 3 (or 3.5)
 
     if challengeLevel == 4:
-        controller = ControlFlow(control, camera, imu, mode=ROBOTMODE.INIT)
+        controller = ControlFlow(control, camera, imu,lidar, mode=ROBOTMODE.FORWARD)
 
-        controller.search_for_tag(3, -1, 360)
+        #controller.search_for_tag(5, -1, 360)
 
         
         while rclpy.ok():
-            rclpy.spin_once(robot, timeout_sec=0.1)
-            time.sleep(0.1)
+            rclpy.spin_once(robot, timeout_sec=0.01)
+            time.sleep(0.01)
             # Write your solution here for challenge level 4
 
-            controller.make_move(0.1)
+            controller.make_move(0.01)
 
     if challengeLevel == 5:
         while rclpy.ok():

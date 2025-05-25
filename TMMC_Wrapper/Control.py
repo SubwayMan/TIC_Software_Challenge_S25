@@ -1,4 +1,4 @@
-from TMMC_Wrapper import Camera
+from TMMC_Wrapper import Camera,Lidar
 from .IMU import IMU
 from irobot_create_msgs.action import Dock,Undock
 from geometry_msgs.msg import Twist
@@ -246,6 +246,7 @@ class ROBOTMODE:
     DRIVETOTAG=3
     SEARCHFORTAG=4
     INIT=5 # check what tag is at the beginning
+    FORWARD=6
 
 ROBOTMODE = Enum('ROBOTMODE', 
                  [('KEYBOARD', 0), 
@@ -253,11 +254,12 @@ ROBOTMODE = Enum('ROBOTMODE',
                   ('STOPPED', 2), 
                   ('DRIVETOTAG', 3), 
                   ('SEARCHFORTAG', 4),
-                  ('INIT', 5)
+                  ('INIT', 5),
+                  ('FORWARD', 6)
                   ])
 
 class ControlFlow():
-    def __init__(self, control: Control, camera: Camera, imu: IMU, mode=ROBOTMODE.KEYBOARD):
+    def __init__(self, control: Control, camera: Camera, imu: IMU,lidar: Lidar, mode=ROBOTMODE.KEYBOARD):
         self.control = control
         self.imu = imu
         self.mode = mode
@@ -267,6 +269,7 @@ class ControlFlow():
         self.pose = None
         self.last_mode = None
         self.vel = 0
+        self.lidar = lidar
 
         # variables for SEARCHFORTAG
         self.desired_tag = None
@@ -278,6 +281,7 @@ class ControlFlow():
         # for movement (rotation)
         self.rotation_queue = deque()
         self.current_rotation = None # needs to be a tuple (target_degrees, direction)
+        self.previous_mode = self.mode
 
     def make_move(self, atomic_time):
         self.handle_movement()
@@ -294,12 +298,11 @@ class ControlFlow():
 
         elif self.mode == ROBOTMODE.REVERSING:
             self.control.stop_keyboard_input()
-            self.control.move_backward()
-            #self.timeout -= atomic_time
-            #while self.timeout <= 0:
-            #    self.timeout -= atomic_time
-            time.sleep(self.timeout)
-            self.mode = self.default_mode
+            self.vel = -0.4
+            self.timeout -= atomic_time
+            if self.timeout <= 0:
+                self.vel = 0.0
+                self.mode = self.previous_mode
 
         elif self.mode == ROBOTMODE.STOPPED:
             self.control.stop_keyboard_input()
@@ -314,17 +317,25 @@ class ControlFlow():
             self.control.stop_keyboard_input()
             angle, distance = self._find_angle_and_distance(self.pose)
             angle_rotate = abs(float(angle))
-            direction = -1 if angle > 0 else 1
-            print(f"ROTATING {angle_rotate} {direction}")
-            self.control.rotate(angle_rotate, direction)
+            #direction = -1 if angle > 0 else 1
+            #print(f"ROTATING {angle_rotate} {direction}")
+            #self.control.rotate(angle_rotate, direction)
             #may need to add driving correction since velocity * time may not be real distance
-            #velocity = 1.0
-            #time_forward = distance/velocity
+            velocity = 1.0
+            time_forward = distance/velocity
+            self.vel = velocity
+             
+            scan = self.lidar.checkScan()
+            dist_tuple = self.lidar.detect_obstacle_in_cone(scan, 1.0 , 0, 5)
+            dist = dist_tuple[0] * math.cos(math.radians(np.deg2rad(dist_tuple[1])))
+            if 0 <= dist <= 0.2:
+                self.vel = 0
+                self.mode = ROBOTMODE.INIT
+
+
             #print(f"MOVING MOVING sleeping for {time_forward}")
             #self.control.set_cmd_vel(velocity, 0.0, time_forward)
             #time.sleep(time_forward)
-            print("ya")
-            self.mode = self.default_mode
         elif self.mode == ROBOTMODE.SEARCHFORTAG:
             # Requirement: The desired tag must be set, the angle to turn and multiplier +- 1
 
@@ -333,6 +344,7 @@ class ControlFlow():
             
             # Get tag data from the camera so far
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
+            print(tags)
             for tag in tags:
                 if tag[0] == self.desired_tag and -10 <= tag[2] <= 10:
                     #If the tag is found then no need to search more
@@ -340,13 +352,23 @@ class ControlFlow():
                     self.pose = tag
                     self.current_rotation = None
 
-                    self.mode = ROBOTMODE.INIT
+                    self.mode = ROBOTMODE.DRIVETOTAG
 
         elif self.mode == ROBOTMODE.INIT:
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
             if tags:
                 pass
+        elif self.mode == ROBOTMODE.FORWARD:
+            if self.previous_mode == ROBOTMODE.REVERSING:
+                self.timeout = 1.0
+                self.previous_mode = ROBOTMODE.FORWARD
+            
+            self.timeout -= atomic_time
+            if self.timeout <= 0:
+                self.current_rotation = None
+            print("FORWARD")
+            self.vel = 0.8
 
                 
     def handle_movement(self):
@@ -356,7 +378,18 @@ class ControlFlow():
 
         rot = 0
         vel = self.vel
-
+        dist = self.near_wall(scan_distance = 0.8, distance_threshold = 0.4)
+        if 0<= dist <= 0.4:
+            print("TOO CLOSE")
+            if self.mode != ROBOTMODE.REVERSING:
+                self.previous_mode = self.mode
+                vel = 0.0
+            self.mode = ROBOTMODE.REVERSING
+            self.timeout = 0.10
+        elif 0 <= dist <= 1.0 and self.mode != ROBOTMODE.REVERSING: 
+            print(f"SLOW DOWN, current vel is {vel}")
+            vel = vel * (1 - math.exp(-10.0 * (dist - 0.1)))
+            print(f"new velocity of {vel}")
         if self.current_rotation:
             start_orientation, target, direction = self.current_rotation
             _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
@@ -377,6 +410,13 @@ class ControlFlow():
 
         self.control.send_cmd_vel(float(vel), float(rot))
 
+    def near_wall(self, scan_distance = 0.8, distance_threshold = 0.4):
+        scan = self.lidar.checkScan()
+        dist_tuple = self.lidar.detect_obstacle_in_cone(scan, scan_distance, 0, 10)
+        dist = dist_tuple[0] * math.cos(math.radians(np.deg2rad(dist_tuple[1])))
+        print(dist)
+        return dist
+        
 
     def reverse(self, timeout=1.0):
         print("REVERSING")
@@ -415,6 +455,4 @@ class ControlFlow():
     def rotate(self, degrees, direction):
         self.rotation_queue.append((degrees, -direction))
         
-
-
 
