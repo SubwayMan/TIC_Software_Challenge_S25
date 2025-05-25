@@ -126,10 +126,11 @@ try:
         for edge in edges:
             path.add_edge(*edge)
 
-        controller = ControlFlow(control, camera, imu)
+        controller = ControlFlow(control, camera, imu, path=RobotPath, )
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
+            controller.make_move(0.1)
             # Write your solution here for challenge level 3 (or 3.5)
 
     if challengeLevel == 4:
