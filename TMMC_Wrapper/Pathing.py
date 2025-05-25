@@ -10,11 +10,11 @@ class RobotPath():
     def current(self):
         return self.edges[0]
 
-    def add_edge(self, start, end, stop_dist, rotation):
-        self.edges.append(RobotPathEdge(start, end, stop_dist, rotation))
+    def add_edge(self, start, end, stop_dist, rotation, bias):
+        self.edges.append(RobotPathEdge(start, end, stop_dist, rotation, bias))
 
 class RobotPathEdge():
-    def __init__(self, tag1, tag2, stop_dist, rotation, bias=0):
+    def __init__(self, tag1, tag2, stop_dist, rotation, bias):
         self.start = tag1
         self.end = tag2
         self.stop_dist = stop_dist

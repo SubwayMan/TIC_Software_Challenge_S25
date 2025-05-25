@@ -330,7 +330,7 @@ class ControlFlow():
                 self.mode = self.default_mode
 
         elif self.mode == ROBOTMODE.DRIVETOTAG:
-            print("MODE DRIVE TO TAG")
+            print("MODE DRIVE TO TAG", self.destination_tag)
             self.vel = 0.5
             self.control.stop_keyboard_input()
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
@@ -341,7 +341,7 @@ class ControlFlow():
                     print("Saw tag at angle ", angle, "distance", distance)
                     angle_rotate = abs(float(angle))
                     x_offset = math.sin(math.radians(float(angle))) * distance
-                    
+                    print("x_offset", x_offset)
                     direction = 1 if x_offset > self.path.current().bias else -1
                     self.dist = distance
               
@@ -352,8 +352,10 @@ class ControlFlow():
                     break
             else:
                 d = self.vel * (time.time() - self.ltime)
-                self.dist -= d
+                print("Assuming distance", d)
+                self.dist -= max(d, 0.1)
                 #self.clear_rotations()
+            print("Distance", self.dist)
             self.ltime = time.time()
             c_edge = self.path.current()
 
@@ -368,17 +370,9 @@ class ControlFlow():
                 print("SEARCH FOR TAG", next.end, direction, angle)
                 self.search_for_tag(next.end, direction, angle)
 
-            #may need to add driving correction since velocity * time may not be real distance
-            velocity = 1.0
-            time_forward = distance/velocity
-            self.vel = velocity
+
              
-            scan = self.lidar.checkScan()
-            dist_tuple = self.lidar.detect_obstacle_in_cone(scan, 1.0 , 0, 5)
-            dist = dist_tuple[0] * math.cos(math.radians(np.deg2rad(dist_tuple[1])))
-            if 0 <= dist <= 0.2:
-                self.vel = 0
-                self.mode = ROBOTMODE.INIT
+
 
 
             #print(f"MOVING MOVING sleeping for {time_forward}")
@@ -391,7 +385,7 @@ class ControlFlow():
             # Safety Check
             # print("Desired tag: ", self.desired_tag)
             print("SEARCH MODE", self.desired_tag)
-            
+            print(self.rotation_queue, self.current_rotation)
             # Get tag data from the camera so far
             tags = self.camera.estimate_apriltag_pose(self.camera.rosImg_to_cv2())
             print(tags)
@@ -402,8 +396,10 @@ class ControlFlow():
                     node = c_edge.end
 
                     self.drive_to_tag(node)
+                    return
 
             if self.current_rotation == None:
+                print("CREEPING")
                 if self.timeout <= 0:
                     c_edge = self.path.current()
                     node = c_edge.end
@@ -412,7 +408,6 @@ class ControlFlow():
                     self.rotate(5, self.parity, 0.5)
                     self.parity *= -1
                     self.vel = 0.1
-                    print("CREEPING")
                     self.flag = True
 
             if self.flag:
@@ -500,7 +495,7 @@ class ControlFlow():
         elif self.rotation_queue:
             start = self.imu.checkImu().orientation
             self.current_rotation = (start, *self.rotation_queue.popleft())
-        # print("Movement", vel, rot)
+        print("Movement", vel, rot)
         self.control.send_cmd_vel(float(vel), float(rot))
 
     def near_wall(self, scan_distance = 0.8, distance_threshold = 0.4):
@@ -526,6 +521,8 @@ class ControlFlow():
     def drive_to_tag(self, tag):
         #FOR FUTURE, NEED EGDE?
         self.destination_tag = tag
+        self.ltime = time.time()
+        self.dist = 10000
         self.mode = ROBOTMODE.DRIVETOTAG
 
     def stop(self, timeout=1.0):
@@ -533,8 +530,10 @@ class ControlFlow():
         self.timeout = timeout
 
     def search_for_tag(self, tag, direction, angle=90):
+        self.clear_rotations()
         self.rotate(angle, direction, 0.35)
         self.desired_tag = tag
+        self.timeout = 1
         self.mode = ROBOTMODE.SEARCHFORTAG
 
     def _find_angle_and_distance(self, pose):

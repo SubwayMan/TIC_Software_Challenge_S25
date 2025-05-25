@@ -7,7 +7,7 @@ import time
 from ultralytics import YOLO
 
 # Variable for controlling which level of the challenge to test -- set to 0 for pure keyboard control
-challengeLevel = 7
+challengeLevel = 3
 
 # Set to True if you want to run the simulation, False if you want to run on the real robot
 is_SIM = False
@@ -118,17 +118,17 @@ try:
         # create path
         # find 7->3->5->6
         edges = [
-            (6, 7, 0.7, (90, -1)),
-            (7, 3, 1.5, (90, -1)),
-            (3, 5, 0.7, (45, -1), -0.4),
-            (5, 6, 0.7, (135, -1)),
+            (5, 6, 0.6, (130, -1), -0.1),
+            (6, 7, 0.8, (90, -1), 0.1),
+            (7, 3, 1.2, (90, -1), -0.1),
+            (3, 5, 0.7, (45, -1), 0.2),
         ]               
         path = RobotPath()
         for edge in edges:
             path.add_edge(*edge)
 
-        controller = ControlFlow(control, camera, imu, path=path)
-        controller.search_for_tag(7, -1, 360)
+        controller = ControlFlow(control, camera, imu, path=path, lidar=lidar)
+        controller.search_for_tag(6, -1, 10)
         while rclpy.ok():
             rclpy.spin_once(robot, timeout_sec=0.1)
             time.sleep(0.1)
