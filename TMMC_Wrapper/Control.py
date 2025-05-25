@@ -273,13 +273,13 @@ class ControlFlow():
         self.camera = camera
         self.degree = 0
         self.direction = 1
-        self.ang_vel = 0.9
+        self.ang_vel = 0.4
         self.dist = 10000
         self.ltime = time.time()
 
         # for movement (rotation)
         self.rotation_queue = deque()
-        self.current_rotation = None # needs to be a tuple (target_degrees, direction)
+        self.current_rotation = None # needs to be a tuple (target_degrees, direction, ang_vel)
 
     def make_move(self, atomic_time):
         self.handle_movement()
@@ -323,18 +323,19 @@ class ControlFlow():
                     angle, distance = self._find_angle_and_distance(self.pose)
                     print("Saw tag at angle ", angle, "distance", distance)
                     angle_rotate = abs(float(angle))
-                    direction = -1 if angle > 0 else 1
-                    print(f"ROTATING {angle_rotate} {direction}")
+                    direction = 1 if angle > 0 else -1
                     self.dist = distance
-
-                    if angle_rotate > 3:
-                        self.clear_rotations()
-                        self.rotate(0.5, direction)
+              
+                    # if angle_rotate > 3:
+                    #     print(f"ROTATING {angle_rotate} {direction}")
+                    self.clear_rotations()
+                    self.rotate(0.4, direction, 0.5)
                     break
             else:
-                self.dist -= 0.2
+                self.dist -= 0.05
+                #self.clear_rotations()
 
-            if self.dist <= 10:
+            if self.dist <= 0.4:
                 self.mode = ROBOTMODE.INIT
 
             #may need to add driving correction since velocity * time may not be real distance
@@ -355,11 +356,7 @@ class ControlFlow():
             for tag in tags:
                 if tag[0] == self.desired_tag and -10 <= tag[2] <= 10:
                     #If the tag is found then no need to search more
-                    self.destination_tag = self.desired_tag
-                    self.pose = tag
-                    self.current_rotation = None
-
-                    self.mode = ROBOTMODE.INIT
+                    self.drive_to_tag(self.desired_tag)
 
         elif self.mode == ROBOTMODE.INIT:
             self.vel = 0
@@ -378,7 +375,7 @@ class ControlFlow():
         vel = self.vel
 
         if self.current_rotation:
-            start_orientation, target, direction = self.current_rotation
+            start_orientation, target, direction, angvel = self.current_rotation
             _, _, yaw_start = self.imu.euler_from_quaternion(start_orientation)
             yaw_start_deg = math.degrees(yaw_start)
             q_current = self.imu.checkImu().orientation
@@ -389,12 +386,12 @@ class ControlFlow():
             if current_diff >= abs(target):
                 self.current_rotation = None
             else:
-                rot = direction * self.ang_vel
+                rot = direction * angvel
 
         elif self.rotation_queue:
             start = self.imu.checkImu().orientation
             self.current_rotation = (start, *self.rotation_queue.popleft())
-
+        print("Movement", vel, rot)
         self.control.send_cmd_vel(float(vel), float(rot))
 
 
@@ -418,7 +415,7 @@ class ControlFlow():
         self.timeout = timeout
 
     def search_for_tag(self, tag, direction, angle=90):
-        self.rotate(angle, direction)
+        self.rotate(angle, direction, 0.3)
         self.desired_tag = tag
         self.mode = ROBOTMODE.SEARCHFORTAG
 
@@ -431,10 +428,14 @@ class ControlFlow():
         status, x1, y1, x2, y2 = self.camera.ML_predict_stop_sign(self.camera.rosImg_to_cv2())
         return status and (y2-y1)/(x2-x1) <= 1.2
     
-    def rotate(self, degrees, direction):
-        self.rotation_queue.append((degrees, -direction))
+    def rotate(self, degrees, direction, angvel=1):
+        if self.current_rotation:
+            self.rotation_queue.append((degrees, -direction, angvel))
+        else:
+            self.current_rotation = (self.imu.checkImu().orientation, degrees, -direction, angvel)
 
     def clear_rotations(self):
+        self.current_rotation = None
         self.rotation_queue = deque()
         
 
