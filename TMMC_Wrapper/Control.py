@@ -271,7 +271,7 @@ class ControlFlow():
 
         # for movement (rotation)
         self.rotation_queue = deque()
-        self.current_rotation = None # needs to be a tuple (starting_quaternion, target_degrees, direction)
+        self.current_rotation = None # needs to be a tuple (target_degrees, direction)
 
     def make_move(self, atomic_time):
         print("IM LOOOOOPINGINGINGIN")
@@ -365,7 +365,8 @@ class ControlFlow():
             print("I'm rotating", self.current_rotation, rot)
 
         elif self.rotation_queue:
-            self.current_rotation = self.rotation_queue.pop()
+            start = self.imu.checkImu().orientation
+            self.current_rotation = (start, *self.rotation_queue.pop())
 
         self.control.send_cmd_vel(float(vel), float(rot))
 
@@ -394,7 +395,7 @@ class ControlFlow():
         return status and (y2-y1)/(x2-x1) <= 1.2
     
     def rotate(self, degrees, direction):
-        self.rotation_queue.append((self.imu.checkImu().orientation, degrees, direction))
+        self.rotation_queue.append((degrees, direction))
         
 
 
